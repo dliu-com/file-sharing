@@ -1,0 +1,9 @@
+node_modules/
+web/vendor/
+cdk.out/
+cdk.context.json
+.env*
+*.log
+.DS_Store
+# Local test links for `make probe` / `make smoke` (private; never commit).
+config/*.local.json

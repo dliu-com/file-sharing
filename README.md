@@ -1,0 +1,247 @@
+# share.dliu.com
+
+A private file-sharing site. The owner keeps files in OneDrive and creates a normal "Anyone with the link" sharing link. After signing in at `https://share.dliu.com/admin`, the owner pastes that link and gets back a short link such as `https://share.dliu.com/s/k7Qx9pLmA2`. Friends open the short link without signing in. AWS fetches the files from OneDrive server-side and serves them from `dliu.com`, so friends never contact Microsoft. A folder link shows a file list with a **Download** button on every file. A file link shows a preview and a Download button.
+
+## Goals
+
+- **Short, clean links** instead of OneDrive's long sharing URLs.
+- **Reachable from China.** OneDrive and SharePoint (`*.sharepoint.com`, `1drv.ms`) are often blocked there, so every byte is served from a `dliu.com` domain. Slow speeds are acceptable. The site is not hosted in China, so no ICP licence is needed.
+- **OneDrive stays the only copy** of each file. There is no upload step and no second storage bill.
+- **No access to the owner's Microsoft account.** The site gets no Graph permissions, no app registration with file scopes, and no refresh token. The most it ever holds is an "Anyone" sharing link, which only opens the one shared item.
+
+## Trust model
+
+**Microsoft's sharing is the real security boundary. This site's own controls are treated as untrusted.**
+
+- **What can be exposed:** only what Microsoft lets an "Anyone" link reach, which is the shared item and nothing outside it (tested: the parent folder returned 403). A bug in this site, a leaked short link, or even a fully compromised AWS account can expose no more than the stored Anyone links would.
+- **Real revocation:** turning off or expiring the link in OneDrive. Deleting or expiring a short link here is a convenience on top, not something to rely on.
+- **Never shared:** anything that should never be public through a link stays unshared in OneDrive. The site can't reach it.
+- **Owner sign-in** only identifies the owner (Entra `openid` scope, `@dliu.com` accounts only). It requests no file permissions.
+
+## Using it
+
+**Owner:**
+1. In OneDrive, choose Share → "Anyone with the link" → Copy link.
+2. Open `https://share.dliu.com/admin` and sign in with the Microsoft account.
+3. Paste the link, optionally add a title and an expiry, and click **Create link**. The site opens the link once to check it works and to tell whether it is a file or a folder.
+4. Copy the short link and send it to friends.
+
+On the admin page each link can be copied, edited (title, expiry, or a new OneDrive link, keeping the same short link), refreshed after files change in OneDrive, or deleted.
+
+**Friends:** open the short link. There is nothing to sign in to. They can browse subfolders, preview images, video, audio, PDF and text files (PDFs are drawn in the page with a self-hosted copy of Mozilla PDF.js, so they show even where the browser can't embed PDFs: Android, WeChat, Chrome set to download PDFs), and download any file with its Download button. The pages friends see (landing, viewer, link-not-found) are in Chinese or English: the browser's preferred language picks one, and the 中文 / EN button in the header switches and remembers the choice (`localStorage.lang`). The strings live in `web/i18n.js`. The admin page is English only. "DL Share" in the top left goes to the home page, and every page has a Docs button (icon only on phones).
+
+## How it works
+
+```mermaid
+flowchart LR
+  friend[Friend's browser] --> cf[CloudFront<br>share.dliu.com]
+  cf -->|viewer request| fn[CloudFront Function<br>link check]
+  fn <--> kvs[(CloudFront<br>KeyValueStore)]
+  cf -->|/_app/*| app[(S3: pages)]
+  cf -->|/f/* on cache miss| edge[Lambda@Edge<br>origin request / response]
+  edge -->|guest session, path → file id| sp[OneDrive / SharePoint<br>via the Anyone link]
+  cf -->|fetches bytes| sp
+  cf -->|/api/*, /auth/*| api[API Lambda<br>function URL + OAC]
+  api -->|folder listing| sp
+  api --> kvs
+  owner[Owner's browser] -->|Entra sign-in| api
+```
+
+### URLs
+
+| URL | What it serves | Handled by |
+| --- | --- | --- |
+| `/` | Landing page | S3 `/_app/index.html` |
+| `/admin` | Owner page | S3 `/_app/admin.html`, which calls the API |
+| `/docs` | Public docs (CN/EN): Technical architecture and Security tabs, drawn with the diagram kit shared with the video and traffic-monitor sites (`web/diagram.js`, `web/docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
+| `/s/<id>/[path]` | Viewer page: the share's root, a subfolder (ending in `/`) or one file's preview | S3 `/_app/view.html`, which calls `/api/s/<id>/info` |
+| `/f/<id>/<path>` | Raw file bytes, shown inline when the type is safe to show | Lambda@Edge and SharePoint, cached by CloudFront |
+| `/f/<id>/<path>?dl=1` | The same bytes with `Content-Disposition: attachment` (the Download button) | Same, cached separately |
+| `/api/s/<id>/info?path=` | Public JSON: a folder listing or one file's details | API Lambda |
+| `/api/me`, `/api/shares…` | Owner API (signed-in only) | API Lambda |
+| `/auth/login`, `/auth/callback`, `/auth/logout` | Entra sign-in (OIDC, PKCE) | API Lambda |
+
+For a file share, `<path>` is the file name. For a folder share, it is the path inside the shared folder, for example `/f/k7Qx9pLmA2/day1/IMG_0012.jpg`. Unknown, deleted and expired links all get the same 404 page, so they can't be told apart.
+
+### Links and share records
+
+- A link id is 10 random base62 characters (about 59 bits), so ids can't be guessed.
+- Each share is one CloudFront KeyValueStore entry of at most 1 KB. There is no database:
+
+  ```json
+  { "src": "<OneDrive Anyone link>", "kind": "folder", "name": "Tokyo trip", "created": 1793500000000, "exp": 0 }
+  ```
+
+  `created` and `exp` are milliseconds, and `exp: 0` means the link never expires.
+- The OneDrive link is a secret, because anyone holding it could skip this site. It stays inside AWS and is never sent to visitors.
+- The owner API writes the store with conditional ETag writes. New, changed and deleted links reach every edge location within a few seconds.
+
+### Serving a file
+
+1. **Viewer request (CloudFront Function `functions/viewer.js`).** This runs on every request, including cache hits, so a deleted or expired link stops working immediately.
+   - It looks up `<id>` in the KeyValueStore and checks `exp`.
+   - It rejects `.`, `..`, empty segments, `\` and control characters in the path.
+   - It deletes any incoming `x-share-*` headers, then passes the OneDrive link to the origin in `x-share-src` (not part of the cache key).
+   - It removes every query parameter except `dl=1`.
+2. **Cache hit.** CloudFront serves the cached bytes and no Lambda runs.
+3. **Cache miss: origin request (`lambda/edge/index.js`).**
+   - Opens the OneDrive link as a guest, or reuses the guest session it has in memory.
+   - Resolves the path to SharePoint's file id. SharePoint itself refuses anything outside the share.
+   - Points this one origin request at `<tenant>-my.sharepoint.com/…/_layouts/15/download.aspx?UniqueId=…` with the guest cookie and a browser-like `User-Agent`. CloudFront then fetches the file, and `Range` is forwarded so downloads can resume and video can seek.
+4. **Origin response.** Keeps only safe headers (length, range, ETag, dates), so nothing from SharePoint that identifies the account reaches visitors. It also:
+   - sets the content type from the file name;
+   - sets `Content-Disposition` to `inline` for images, video, audio, PDF and plain text, and to `attachment` for everything else and for `?dl=1`;
+   - sets `Cache-Control` (browsers 1 hour, CloudFront 1 day).
+5. **Viewer response.** The shared traffic-monitor `dliu-visitor-id` function logs views and downloads, as on files.dliu.com.
+
+### Folder listings
+
+The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function validates the link and adds the trusted `x-share-src` header. The API's function URL uses `AWS_IAM` with CloudFront OAC, so only CloudFront can call it and the header can't be forged. The API lists the folder through SharePoint's REST API using the same guest session. It returns only names, sizes and dates, never SharePoint URLs or ids. Listings are not cached by CloudFront; the Lambda keeps them in memory for up to 5 minutes.
+
+### Caching and Refresh
+
+File bytes are cached by CloudFront for up to 1 day (7 days at most). After changing files in OneDrive, click **Refresh** on the admin page. It invalidates `/f/<id>*` and clears the listing cache. Changing a link's OneDrive source or deleting a link does the same automatically.
+
+### Security
+
+- These headers are set on every response: a CSP that allows scripts only from `/_app/`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` (keeps link ids from leaking to other sites), HSTS, and `X-Robots-Tag: noindex`. A shared HTML or SVG file is therefore downloaded rather than shown, and can't run code on the site.
+- Links are bearer tokens: anyone who has a link can use it. Expiry and deleting here are conveniences; the OneDrive link's own settings are the real control (see Trust model).
+- Owner API `POST` requests need the session cookie (`SameSite=Lax`, `__Host-`) and a matching `Origin` header.
+
+### China reachability
+
+- CloudFront uses `PriceClass_All`, so visitors are served from Hong Kong, Tokyo or Singapore.
+- Viewer pages are self-contained and load nothing from Google, Microsoft or other third-party CDNs. Only `/admin` sign-in goes to Microsoft.
+- Reachability should be checked from mainland China, for example with boce.com or 17ce.com.
+
+## Code
+
+| Path | What it is |
+| --- | --- |
+| `bin/file-sharing.ts`, `lib/file-sharing-stack.ts` | CDK app and stack |
+| `functions/viewer.js` | CloudFront Function: routing, link check, path validation |
+| `lambda/edge/sharepoint.js` | **All SharePoint-specific code**, shared by Lambda@Edge and the API |
+| `lambda/edge/index.js`, `lambda/edge/mime.js` | Lambda@Edge file proxy |
+| `lambda/api/` | API Lambda: sign-in (`auth.js`), settings from SSM (`config.js`), KeyValueStore (`store.js`), link management (`shares.js`), routing (`index.js`) |
+| `web/` | Static pages, uploaded to S3 under `/_app/`. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/` |
+| `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make deploy` and `make dev` run it) |
+| `test/` | Jest tests (`make test`) |
+
+## Stacks
+
+| Stack | Region | Contains |
+| --- | --- | --- |
+| `FileSharing` | eu-west-1 | CloudFront, KeyValueStore, CloudFront Function, S3 bucket for `/_app/`, API Lambda, DNS records, certificate (created in us-east-1) |
+| `edge-lambda-stack-…` | us-east-1 | The Lambda@Edge function. CDK creates and deploys this stack automatically. |
+
+Dependencies are the same as files.dliu.com: the root `dliu.com` stack exports (`MainDomain`, `MainHostedZoneId`) and traffic-monitor (`TrafficVisitorFunctionArn`, `TrafficGeoOriginRequestPolicyId`).
+
+## Setup and deploy
+
+Prerequisites: Node.js 22, AWS credentials for the account, and CDK bootstrapped in both eu-west-1 and us-east-1 (`npx cdk bootstrap aws://<account>/us-east-1`).
+
+```sh
+make install
+make test       # unit tests
+make dev        # optional local preview, see below
+make deploy     # runs the tests, then deploys both stacks
+make outputs    # shows SiteUrl, AuthRedirectUri, DistributionId, …
+```
+
+Sign-in setup, once:
+1. In Microsoft Entra, add the redirect URI `https://share.dliu.com/auth/callback` (type Web) to an app registration. The files.dliu.com app registration can be reused. The app needs no API permissions beyond `openid`.
+2. Run `make set-secrets`. It stores the tenant ID, client ID and client secret under `/share/` in SSM. It offers the values from `/share/` or `/files/` as defaults, and reuses the files.dliu.com secret when the same client ID is used.
+
+Then sign in at `https://share.dliu.com/admin` and create a link.
+
+### Checks
+
+| Command | What it does |
+| --- | --- |
+| `make test` | Jest tests for the viewer function, SharePoint module, edge function, API and stack |
+| `make probe` | From this computer, checks that SharePoint still answers the way the site expects (see below) |
+| `make smoke` | Against the live site: creates a throwaway link to the test share, waits for it to reach the KeyValueStore, checks the viewer page, a range download, `?dl=1`, 404s and security headers, then deletes the link. `--keep` keeps it. |
+| `make dev` | Local preview at `http://localhost:8787` that runs the real viewer function, API and edge code against real OneDrive, with an in-memory store, a fake signed-in owner and no AWS |
+
+`probe`, `smoke` and `dev` need a test OneDrive link. Set it in `SHARE_PROBE_LINK`, or for `probe` in the untracked `config/probe.local.json` (`{ "link": "…" }`). Never commit it.
+
+## When SharePoint changes
+
+**Known risk, accepted by the owner.** The site uses SharePoint's undocumented web endpoints and the guest-cookie behaviour of "Anyone" links. There is no official API for anonymous access to a sharing link, and Microsoft can change these without notice. When that happens, the site breaks, and the fix is to update the code, for example with Copilot. Microsoft's access checks are unaffected, because anything that changes can only stop the site from reaching a share, never widen what it can reach.
+
+### Where the dependency lives
+
+All SharePoint-specific code is in **`lambda/edge/sharepoint.js`**. Nothing else builds SharePoint URLs or reads SharePoint responses. `createSharePoint()` returns:
+
+| Function | Used by | Today's implementation |
+| --- | --- | --- |
+| `openShare(link)` | everything below | `GET <link>` with `redirect: manual`, following redirects only on the same host (a redirect elsewhere is a sign-in page, so the link is reported as no longer working). Collects the `FedAuth` guest cookie. Then `GET {site}/_api/v2.0/shares/u!<base64url(link)>/driveItem?$select=…` with a browser-like `User-Agent` to read the name, whether it is a file or folder, and its server-relative path. Sessions are kept in memory for 30 minutes. |
+| `describe(link)` | API (creating a link) | `openShare`, returning only the kind, name, size and item count |
+| `browse(link, path)` | API (listings) | Folders: `GET {site}/_api/web/GetFolderByServerRelativePath(decodedurl=@p)?@p='…'&$select=Exists,Files/…,Folders/…&$expand=Files,Folders`. Files: `GetFileByServerRelativePath`. Results are kept in memory for 5 minutes. |
+| `origin(link, path)` | Lambda@Edge | Resolves the file to its `UniqueId` and returns the host, the path `{site}/_layouts/15/download.aspx?UniqueId=…` and the cookie. `download.aspx` answers `Range` with 206. |
+| `forget(link)` | API (Refresh) | Drops the cached session and listings |
+
+Any 401, 403 or redirect is retried once with a fresh guest session. Quirks to keep in mind:
+- `Exists` must be in `$select`. Without it, a missing folder returns 200 with empty lists instead of an error.
+- `Length` comes back as a string.
+- Requests without a browser-like `User-Agent` are refused.
+
+### Expected behaviour
+
+`make probe` checks, against a real test share:
+1. Opening the link as a guest works and tells whether it is a file or a folder.
+2. A folder lists its files and subfolders, and the count matches.
+3. Looking up a file returns the right size.
+4. A `Range` download returns 206 with the right number of bytes.
+5. A missing file and a `..` path return 404.
+
+It prints only counts, sizes, status codes and timings, never names or links. `make smoke` checks the same through the live site. Microsoft's own scoping (the parent folder of a share returned 403) was checked by hand on 2026-11-01. If it ever stops holding, stop and investigate.
+
+### Symptoms and where to look
+
+| Symptom | Likely change | First thing to check |
+| --- | --- | --- |
+| Every link shows "This link no longer works" or 502 at once | Opening the link no longer sets `FedAuth`, or the redirects changed | Step 1 of `make probe`. Look at the redirect chain and the cookies set. |
+| Listings fail but files download | The REST folder endpoint or JSON shape changed | Step 2. Compare the response with the fields `browse()` reads. |
+| Files fail (503 or 502), listings work | `download.aspx` or `UniqueId` resolution changed | Step 4. As a fallback, the v2 driveItem's `@content.downloadUrl` (valid 60 minutes, no cookie needed) could be used. |
+| Works, then fails after some hours | The guest session expires sooner | Check that sessions are re-opened on 401, 403 or sign-in redirects. |
+| 403 or 429 only from AWS | Throttling or blocking of AWS IPs | Compare `make probe` from a laptop with the CloudWatch logs of the Lambda@Edge function (in the region nearest the visitor). |
+
+**How to fix:** open the share link in a browser with dev tools' Network tab open, see which endpoints the OneDrive web viewer now calls, and update only `sharepoint.js` to match. Then run `make probe`, `make test`, `make deploy` and `make smoke`.
+
+## Verified and open questions
+
+Verified on the live site on 2026-11-01 (`make smoke`): SharePoint answers requests from AWS, the Lambda@Edge function on Node.js 22 can set the `Cookie`, `User-Agent` and `Host` headers for SharePoint, range downloads and the CloudFront cache work, Downloads keep the real (including Chinese) file names, and no SharePoint cookies or headers reach visitors.
+
+Still open: (`:b:`, `:x:`, `:u:` and similar). Only a folder link has been tested.
+- **Guest session lifetime.** How long SharePoint honours the `FedAuth` cookie server-side is unknown. The site re-opens the link when it expires.
+- **Tenant expiry policy for Anyone links.** If the tenant forces Anyone links to expire, each share's OneDrive link must be replaced (Edit on the admin page) before then.
+
+## Alternatives considered
+
+**Graph app permissions** (`Sites.Selected` or `Files.Read.All`) would be the documented, stable API. They were rejected because the owner will not give the site access to the Microsoft account.
+
+**Mirror into S3.** When a link is created, the backend would copy the files from the Anyone link into S3 and serve them like files.dliu.com. It was rejected because storage is duplicated, changed files need re-syncing, and very large files hit Lambda's 15-minute limit. It stays a fallback if Lambda@Edge proves troublesome.
+
+Two other options were ruled out:
+- **Redirecting** visitors to the SharePoint download URL fails the China goal.
+- **Streaming bytes through a regional Lambda** hits Lambda's response size limits (about 200 MB with streaming) and costs Lambda time for every download.
+
+## Costs
+
+| Resource | You pay for |
+| --- | --- |
+| OneDrive | Nothing extra. It uses the existing Microsoft 365 storage. |
+| CloudFront | Data transfer and requests. The free tier includes 1 TB and 10M requests per month. `PriceClass_All` costs a little more per GB outside the free tier. |
+| CloudFront Functions and KeyValueStore | About $0.10 per million function runs plus $0.03 per million reads |
+| Lambda@Edge | Cache misses only |
+| Lambda | Owner actions and folder listings |
+| S3 | The pages only (a few KB) |
+
+When idle, there is effectively no cost.
+
+## Ideas for later
+
+- A password per link, a download limit, or a view-only mode with no download buttons.
+- Readable link prefixes, such as `/s/tokyo-trip-k7Qx9p`. The random part must remain.
+- A scheduled `make smoke` to catch SharePoint changes before friends do.

@@ -1,0 +1,32 @@
+{
+  "name": "file-sharing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "share.dliu.com: short share links for OneDrive \"Anyone with the link\" files and folders, served from AWS.",
+  "scripts": {
+    "synth": "cdk synth",
+    "diff": "cdk diff --all",
+    "deploy": "cdk deploy --all --ci --require-approval never",
+    "test": "jest"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.275.0",
+    "constructs": "^10.8.1",
+    "source-map-support": "^0.5.21"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-cloudfront": "^3.1161.0",
+    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.1161.0",
+    "@aws-sdk/client-ssm": "^3.1161.0",
+    "@aws-sdk/signature-v4a": "^3.1138.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^26.6.6",
+    "aws-cdk": "^2.1147.0",
+    "esbuild": "^0.28.2",
+    "jest": "^29.7.0",
+    "pdfjs-dist": "^4.10.38",
+    "ts-jest": "^29.4.15",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

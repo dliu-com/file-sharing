@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Manage links · DL Share</title>
+  <link rel="icon" href="/_app/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/_app/style.css">
+  <script type="module" src="/_app/admin.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/"><img class="logo" src="/_app/logo.svg" alt=""><span class="name">DL Share</span></a>
+    <nav id="nav"></nav>
+  </header>
+  <main class="narrow wide-ish">
+    <p class="muted" id="status">Loading…</p>
+
+    <section class="panel" id="signin" hidden>
+      <h1>Manage share links</h1>
+      <p>Sign in with your dliu.com Microsoft account to create and manage links.</p>
+      <a class="button primary" href="/auth/login?return=/admin">Sign in with Microsoft</a>
+    </section>
+
+    <section id="owner" hidden>
+      <form class="panel" id="create">
+        <h1>New share link</h1>
+        <label for="link">OneDrive link</label>
+        <input type="url" id="link" required autocomplete="off" spellcheck="false"
+               placeholder="https://…-my.sharepoint.com/:f:/g/personal/…">
+        <p class="muted small">In OneDrive: Share → “Anyone with the link” → Copy link. The link must open without signing in.</p>
+        <div class="grid">
+          <div>
+            <label for="name">Title <span class="muted">(optional)</span></label>
+            <input type="text" id="name" maxlength="100" placeholder="Defaults to the file or folder name">
+          </div>
+          <div>
+            <label for="expiry">Expires</label>
+            <select id="expiry">
+              <option value="0">Never</option>
+              <option value="1">In 1 day</option>
+              <option value="7">In 7 days</option>
+              <option value="30" selected>In 30 days</option>
+              <option value="90">In 90 days</option>
+              <option value="365">In 1 year</option>
+              <option value="date">On a date…</option>
+            </select>
+            <input type="date" id="expiry-date" hidden>
+          </div>
+        </div>
+        <div class="row">
+          <button type="submit" class="primary" id="create-button">Create link</button>
+          <span class="error" id="create-error"></span>
+        </div>
+        <div class="result" id="result" hidden>
+          <input type="text" id="result-url" readonly>
+          <button type="button" class="primary" id="result-copy">Copy</button>
+          <a class="button" id="result-open" target="_blank" rel="noopener">Open</a>
+        </div>
+      </form>
+
+      <h2>Links</h2>
+      <p class="muted small" id="list-status"></p>
+      <table class="files shares" id="shares" hidden>
+        <thead><tr><th>Title</th><th class="date">Created</th><th class="date">Expires</th><th class="actions"><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody id="share-rows"></tbody>
+      </table>
+    </section>
+
+    <dialog id="edit">
+      <form method="dialog" id="edit-form">
+        <h2>Edit link</h2>
+        <p class="muted small" id="edit-url"></p>
+        <label for="edit-name">Title</label>
+        <input type="text" id="edit-name" maxlength="100">
+        <label for="edit-expiry">Expires</label>
+        <select id="edit-expiry">
+          <option value="keep">Keep current</option>
+          <option value="0">Never</option>
+          <option value="1">In 1 day</option>
+          <option value="7">In 7 days</option>
+          <option value="30">In 30 days</option>
+          <option value="90">In 90 days</option>
+          <option value="365">In 1 year</option>
+          <option value="date">On a date…</option>
+        </select>
+        <input type="date" id="edit-expiry-date" hidden>
+        <label for="edit-link">OneDrive link</label>
+        <input type="url" id="edit-link" spellcheck="false">
+        <p class="muted small">Changing the OneDrive link keeps the same share URL.</p>
+        <div class="row spread">
+          <span class="error" id="edit-error"></span>
+          <div class="row">
+            <button type="button" id="edit-cancel">Cancel</button>
+            <button type="submit" class="primary" id="edit-save">Save</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+  </main>
+  <footer class="bottom"><a href="https://dliu.com">dliu.com</a></footer>
+</body>
+</html>
