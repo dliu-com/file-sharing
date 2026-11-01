@@ -27,9 +27,20 @@ function wireExpiry(select, dateInput) {
   });
 }
 
+/** Exact local time, e.g. "Dec 1, 2026, 11:59:59 PM GMT". */
+const exactTime = (ms) => new Date(ms).toLocaleString(undefined, {
+  year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
+});
+
 function expiryText(exp) {
   if (!exp) return el('span', { class: 'muted' }, 'Never');
-  return exp <= Date.now() ? el('span', { class: 'error' }, `Expired ${formatDate(exp)}`) : formatDate(exp);
+  const expired = exp <= Date.now();
+  return el('span', { class: expired ? 'error' : '', title: exactTime(exp) }, expired ? `Expired ${formatDate(exp)}` : formatDate(exp));
+}
+
+function keepLabel(exp) {
+  if (!exp) return 'Keep current (never expires)';
+  return `Keep current (${exp <= Date.now() ? 'expired' : 'expires'} ${exactTime(exp)})`;
 }
 
 async function run(button, action) {
@@ -89,6 +100,7 @@ function openEdit(share) {
   $('edit-url').textContent = shareUrl(share.id);
   $('edit-name').value = share.name || '';
   $('edit-expiry').value = 'keep';
+  $('edit-expiry').querySelector('option[value="keep"]').textContent = keepLabel(share.exp);
   $('edit-expiry-date').hidden = true;
   $('edit-link').value = share.src || '';
   $('edit-error').textContent = '';
