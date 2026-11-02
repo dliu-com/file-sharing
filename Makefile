@@ -6,13 +6,13 @@ STACK_NAME ?= FileSharing
 install:
 	npm ci
 
-test:
+test: vendor
 	npm test -- --runInBand
 
-synth:
+synth: vendor
 	AWS_REGION=$(AWS_REGION) npm run synth -- --quiet
 
-diff:
+diff: vendor
 	AWS_REGION=$(AWS_REGION) npm run diff
 
 # Copies PDF.js into web/vendor/pdfjs/ (git-ignored) for the PDF preview.
@@ -20,7 +20,7 @@ vendor:
 	node scripts/vendor-pdfjs.js
 
 # Deploys this stack and the Lambda@Edge companion stack in us-east-1.
-deploy: test vendor
+deploy: test
 	AWS_REGION=$(AWS_REGION) npm run deploy
 
 # Prompts for the Microsoft Entra app's tenant ID, client ID and client secret and stores them in SSM.

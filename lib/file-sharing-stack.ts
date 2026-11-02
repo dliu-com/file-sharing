@@ -64,13 +64,6 @@ export class FileSharingStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });
-    new s3deploy.BucketDeployment(this, 'SiteContent', {
-      sources: [s3deploy.Source.asset(path.join(ROOT, 'web'))],
-      destinationBucket: siteBucket,
-      destinationKeyPrefix: '_app/',
-      // Browsers and CloudFront revalidate on every load (a 304 when unchanged), so a deploy shows up at once.
-      cacheControl: [s3deploy.CacheControl.noCache()],
-    });
 
     // ---------- API ----------
     // Bundled with esbuild: it shares lambda/edge/sharepoint.js and needs the KeyValueStore client and the SigV4A
@@ -259,6 +252,40 @@ export class FileSharingStack extends Stack {
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       // Includes the Asian edge locations closest to China.
       priceClass: cloudfront.PriceClass.PRICE_CLASS_ALL,
+      httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
+    });
+
+    // Site files go to S3 _app/ in three groups, each with its own Cache-Control. Each sync excludes the other
+    // groups' files, so its prune never deletes them.
+    const webDir = path.join(ROOT, 'web');
+    // HTML shells: browsers and CloudFront revalidate on every load, so a deploy shows up at once.
+    new s3deploy.BucketDeployment(this, 'SiteContent', {
+      sources: [s3deploy.Source.asset(webDir)],
+      destinationBucket: siteBucket,
+      destinationKeyPrefix: '_app/',
+      exclude: ['*'],
+      include: ['*.html'],
+      cacheControl: [s3deploy.CacheControl.noCache()],
+    });
+    // App modules (not content-hashed; they import each other): edge-cached for a day and invalidated on deploy,
+    // while browsers still revalidate (a 304 from the edge) so they never mix old and new modules.
+    new s3deploy.BucketDeployment(this, 'SiteAssets', {
+      sources: [s3deploy.Source.asset(webDir)],
+      destinationBucket: siteBucket,
+      destinationKeyPrefix: '_app/',
+      exclude: ['*.html', 'vendor/*'],
+      cacheControl: [s3deploy.CacheControl.fromString('public, max-age=0, must-revalidate, s-maxage=86400')],
+      distribution,
+      distributionPaths: ['/_app/*'],
+    });
+    // Vendored PDF.js (changes only on a version bump): short browser cache, long edge cache.
+    new s3deploy.BucketDeployment(this, 'SiteVendor', {
+      sources: [s3deploy.Source.asset(path.join(webDir, 'vendor'))],
+      destinationBucket: siteBucket,
+      destinationKeyPrefix: '_app/vendor/',
+      cacheControl: [s3deploy.CacheControl.fromString('public, max-age=300, s-maxage=86400, stale-while-revalidate=86400')],
+      distribution,
+      distributionPaths: ['/_app/vendor/*'],
     });
     // IncludeCookies is the only legacy logging setting v2 honours: it puts the dl_vid cookie in the logs.
     (distribution.node.defaultChild as cloudfront.CfnDistribution)

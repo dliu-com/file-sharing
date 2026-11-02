@@ -123,8 +123,8 @@ File bytes are cached by CloudFront for up to 1 day (7 days at most). After chan
 | `lambda/edge/sharepoint.js` | **All SharePoint-specific code**, shared by Lambda@Edge and the API |
 | `lambda/edge/index.js`, `lambda/edge/mime.js` | Lambda@Edge file proxy |
 | `lambda/api/` | API Lambda: sign-in (`auth.js`), settings from SSM (`config.js`), KeyValueStore (`store.js`), link management (`shares.js`), routing (`index.js`) |
-| `web/` | Static pages, uploaded to S3 under `/_app/`. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/` |
-| `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make deploy` and `make dev` run it) |
+| `web/` | Static pages, uploaded to S3 under `/_app/`. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/`. HTML is `no-cache`; scripts, styles and icons are cached 1 day at the edge (invalidated on deploy) and revalidated by browsers; `vendor/` gets `max-age=300, s-maxage=86400, stale-while-revalidate=86400`. The distribution serves HTTP/2 and HTTP/3 |
+| `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make test`, `synth`, `diff`, `deploy` and `dev` run it) |
 | `test/` | Jest tests (`make test`) |
 
 ## Stacks

@@ -126,6 +126,8 @@ function architecture(root) {
     [mono('/admin'), say('站长页面', 'Owner page'), say('每次重新验证', 'Revalidated every load')],
     [mono('/api/* /auth/*'), say('管理 API 与登录', 'Owner API and sign-in'), say('不缓存', 'Never')],
     [mono('/docs'), say('本页', 'This page'), say('每次重新验证', 'Revalidated every load')],
+    [mono('/_app/*'), say('脚本、样式、图标', 'Scripts, styles, icons'), say('边缘 1 天（发布时清除），浏览器每次验证', '1 day at edge (cleared on deploy), browser revalidates')],
+    [mono('/_app/vendor/*'), say('PDF.js', 'PDF.js'), say('边缘 1 天，浏览器 5 分钟', '1 day at edge, 5 min in browser')],
   ]));
 
   add('h2', say('每个链接保存的数据', 'What each link stores'));
