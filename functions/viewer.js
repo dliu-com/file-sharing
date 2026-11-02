@@ -11,15 +11,19 @@ import cf from 'cloudfront';
 const kvs = cf.kvs('__KVS_ID__');
 const ID = /^[0-9A-Za-z]{10}$/;
 
+const ICON = 'https://files.dliu.com/dliu.com/favicon.png';
 const NOT_FOUND = '<!doctype html><html lang="en" data-i18n-title="linkNotFound"><head><meta charset="utf-8">'
   + '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-  + '<title>Link not found · DL Share</title><link rel="stylesheet" href="/_app/style.css">'
+  + '<title>Link not found · DL Share</title><link rel="icon" type="image/png" href="' + ICON + '">'
+  + '<link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css"><link rel="stylesheet" href="/_app/style.css">'
   + '<script type="module" src="/_app/i18n.js"></script></head>'
-  + '<body><header class="top"><a class="brand" href="/"><img class="logo" src="/_app/logo.svg" alt="">'
-  + '<span class="name">DL Share</span></a></header><main class="narrow message">'
+  + '<body class="dl-page"><header class="dl-header"><a class="dl-logo" href="https://dliu.com" aria-label="dliu.com">'
+  + '<img src="' + ICON + '" alt="DL" width="32" height="32"></a><a class="dl-brand" href="/">DL Share</a>'
+  + '<nav class="dl-nav" aria-label="Site"></nav></header><main class="dl-main dl-narrow message">'
   + '<h1 data-i18n="linkNotFound">Link not found</h1>'
   + '<p data-i18n="linkNotFoundText">This link does not exist, has expired or was removed.</p>'
-  + '</main></body></html>';
+  + '</main><footer class="dl-footer"><a href="https://dliu.com">dliu.com</a> · <a href="/docs" data-i18n="docs">Docs</a></footer>'
+  + '</body></html>';
 
 function notFound() {
   return {
@@ -93,9 +97,16 @@ async function handler(event) {
     request.uri = '/_app/docs.html';
     return request;
   }
-  if (uri === '/robots.txt' || uri === '/favicon.ico') {
-    request.uri = uri === '/robots.txt' ? '/_app/robots.txt' : '/_app/logo.svg';
+  if (uri === '/robots.txt') {
+    request.uri = '/_app/robots.txt';
     return request;
+  }
+  if (uri === '/favicon.ico') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: { location: { value: ICON }, 'cache-control': { value: 'public, max-age=86400' } },
+    };
   }
 
   let match = /^\/api\/s\/([^/]+)\/info$/.exec(uri);

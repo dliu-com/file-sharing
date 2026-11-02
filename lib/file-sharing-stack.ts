@@ -136,8 +136,8 @@ export class FileSharingStack extends Stack {
           contentSecurityPolicy: Fn.join('; ', [
             "default-src 'self'",
             Fn.join('', ['script-src ', siteUrl, '/_app/']),
-            "style-src 'self'",
-            "img-src 'self' data: blob:",
+            "style-src 'self' https://files.dliu.com/dliu.com/ui/",
+            "img-src 'self' data: blob: https://files.dliu.com/dliu.com/",
             "media-src 'self' blob:",
             "frame-src 'self'",
             "frame-ancestors 'self'",

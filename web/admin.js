@@ -6,6 +6,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const shareUrl = (id) => `${location.origin}/s/${id}`;
 let shares = [];
 let editing = null;
+const SMALL = 'dl-button dl-button-small';
 
 /** Expiry from a select (days, 0 = never, "date") and its date input; undefined = keep. */
 function expiryFrom(select, dateInput) {
@@ -33,9 +34,9 @@ const exactTime = (ms) => new Date(ms).toLocaleString(undefined, {
 });
 
 function expiryText(exp) {
-  if (!exp) return el('span', { class: 'muted' }, 'Never');
+  if (!exp) return el('span', { class: 'dl-muted' }, 'Never');
   const expired = exp <= Date.now();
-  return el('span', { class: expired ? 'error' : '', title: exactTime(exp) }, expired ? `Expired ${formatDate(exp)}` : formatDate(exp));
+  return el('span', { class: expired ? 'dl-error' : '', title: exactTime(exp) }, expired ? `Expired ${formatDate(exp)}` : formatDate(exp));
 }
 
 function keepLabel(exp) {
@@ -62,10 +63,11 @@ function renderShares() {
   $('share-rows').replaceChildren(...shares.map((share) => {
     const url = shareUrl(share.id);
     const actions = el('div', { class: 'row' },
-      el('button', { type: 'button', onclick: () => copyText(url) }, 'Copy'),
-      el('button', { type: 'button', onclick: () => openEdit(share) }, 'Edit'),
+      el('button', { type: 'button', class: SMALL, onclick: () => copyText(url) }, 'Copy'),
+      el('button', { type: 'button', class: SMALL, onclick: () => openEdit(share) }, 'Edit'),
       el('button', {
         type: 'button',
+        class: SMALL,
         title: 'Fetch the files from OneDrive again (after you changed them there)',
         onclick: (event) => run(event.currentTarget, async () => {
           await api('/api/shares/refresh', { id: share.id });
@@ -74,7 +76,7 @@ function renderShares() {
       }, 'Refresh'),
       el('button', {
         type: 'button',
-        class: 'danger',
+        class: `${SMALL} dl-button-danger`,
         onclick: (event) => {
           if (!confirm(`Delete the link “${share.name}”? It stops working at once. The files stay in OneDrive.`)) return;
           run(event.currentTarget, async () => {
@@ -88,7 +90,7 @@ function renderShares() {
     return el('tr', {},
       el('td', { class: 'name' },
         el('a', { href: url, target: '_blank', rel: 'noopener' }, el('span', { class: 'icon' }, share.kind === 'file' ? '📄' : '📁'), share.name || share.id),
-        el('div', { class: 'muted small mono' }, url)),
+        el('div', { class: 'dl-muted small mono' }, url)),
       el('td', { class: 'date' }, formatDate(share.created)),
       el('td', { class: 'date' }, expiryText(share.exp)),
       el('td', { class: 'actions' }, actions));
@@ -180,13 +182,14 @@ async function main() {
     return;
   }
   $('status').hidden = true;
-  $('nav').replaceChildren(el('span', { class: 'muted small' }, me.user), el('a', { class: 'button', href: '/docs' }, 'Docs'), el('a', { class: 'button', href: '/auth/logout' }, 'Sign out'));
+  $('nav').replaceChildren(el('span', { class: 'dl-account' }, me.user), el('a', { class: 'dl-button', href: '/docs' }, 'Docs'), el('a', { class: 'dl-button', href: '/auth/logout' }, 'Sign out'));
   $('owner').hidden = false;
   wireExpiry($('expiry'), $('expiry-date'));
   wireExpiry($('edit-expiry'), $('edit-expiry-date'));
   $('create').addEventListener('submit', create);
   $('edit-form').addEventListener('submit', saveEdit);
   $('edit-cancel').addEventListener('click', () => $('edit').close());
+  $('edit-close').addEventListener('click', () => $('edit').close());
   $('result-copy').addEventListener('click', () => copyText($('result-url').value));
   $('list-status').textContent = 'Loading…';
   try {

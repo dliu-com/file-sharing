@@ -6,24 +6,26 @@
   <meta name="robots" content="noindex">
   <title>Docs · DL Share</title>
   <meta name="description" content="How share.dliu.com works: architecture and security">
-  <link rel="icon" href="/_app/logo.svg" type="image/svg+xml">
+  <link rel="icon" type="image/png" href="https://files.dliu.com/dliu.com/favicon.png">
+  <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css">
+  <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl-docs.css">
   <link rel="stylesheet" href="/_app/style.css">
-  <link rel="stylesheet" href="/_app/docs.css">
   <script type="module" src="/_app/docs.js"></script>
 </head>
-<body>
-  <header class="top">
-    <a class="brand" href="/" data-i18n-label="home"><img class="logo" src="/_app/logo.svg" alt=""><span class="name">DL Share</span></a>
-    <nav></nav>
+<body class="dl-page">
+  <header class="dl-header">
+    <a class="dl-logo" href="https://dliu.com" aria-label="dliu.com"><img src="https://files.dliu.com/dliu.com/favicon.png" alt="DL" width="32" height="32"></a>
+    <a class="dl-brand" href="/">DL Share</a>
+    <nav class="dl-nav" aria-label="Site" id="nav"></nav>
   </header>
-  <main class="docs-main">
-    <nav class="info-tabs" aria-label="Docs">
+  <main class="dl-main dl-docs-main">
+    <nav class="dl-tabs" aria-label="Docs sections">
       <a href="#architecture" data-tab="architecture" data-i18n="architecture">Technical architecture</a>
       <a href="#security" data-tab="security" data-i18n="security">Security</a>
     </nav>
-    <article id="architecture" class="docs"><noscript><p>The diagrams on this page need JavaScript.</p></noscript></article>
-    <article id="security" class="docs" hidden></article>
+    <article id="architecture" class="dl-docs"><noscript><p>The diagrams on this page need JavaScript.</p></noscript></article>
+    <article id="security" class="dl-docs" hidden></article>
   </main>
-  <footer class="bottom"><a href="https://dliu.com">dliu.com</a></footer>
+  <footer class="dl-footer"><a href="https://dliu.com">dliu.com</a> · <a href="/docs" data-i18n="docs">Docs</a></footer>
 </body>
 </html>

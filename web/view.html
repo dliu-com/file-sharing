@@ -5,42 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <title>DL Share</title>
-  <link rel="icon" href="/_app/logo.svg" type="image/svg+xml">
+  <link rel="icon" type="image/png" href="https://files.dliu.com/dliu.com/favicon.png">
+  <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css">
   <link rel="stylesheet" href="/_app/style.css">
   <script type="module" src="/_app/view.js"></script>
 </head>
-<body>
-  <header class="top">
-    <a class="brand" href="/"><img class="logo" src="/_app/logo.svg" alt=""><span class="name">DL Share</span></a>
+<body class="dl-page">
+  <header class="dl-header">
+    <a class="dl-logo" href="https://dliu.com" aria-label="dliu.com"><img src="https://files.dliu.com/dliu.com/favicon.png" alt="DL" width="32" height="32"></a>
+    <a class="dl-brand" href="/">DL Share</a>
+    <nav class="dl-nav" aria-label="Site" id="nav"></nav>
   </header>
-  <main>
+  <main class="dl-main">
     <nav class="crumbs" id="crumbs" aria-label="Folder" data-i18n-label="folder"></nav>
-    <p class="muted" id="status" data-i18n="loading">Loading…</p>
+    <p class="dl-muted" id="status" data-i18n="loading">Loading…</p>
     <section id="folder" hidden>
-      <table class="files">
-        <thead><tr><th data-i18n="name">Name</th><th class="size" data-i18n="size">Size</th><th class="date" data-i18n="modified">Modified</th><th class="actions"><span class="visually-hidden" data-i18n="download">Download</span></th></tr></thead>
+      <div class="dl-table-wrap"><table class="dl-table files">
+        <thead><tr><th data-i18n="name">Name</th><th class="size" data-i18n="size">Size</th><th class="date" data-i18n="modified">Modified</th><th class="actions"><span class="dl-visually-hidden" data-i18n="download">Download</span></th></tr></thead>
         <tbody id="rows"></tbody>
-      </table>
-      <p class="muted small" id="empty" hidden data-i18n="empty">This folder is empty.</p>
+      </table></div>
+      <p class="dl-muted small" id="empty" hidden data-i18n="empty">This folder is empty.</p>
     </section>
     <section id="file" hidden>
       <div class="file-head">
         <div>
           <h1 id="file-name"></h1>
-          <p class="muted" id="file-meta"></p>
+          <p class="dl-muted" id="file-meta"></p>
         </div>
         <div class="row">
-          <a class="button primary" id="file-download" download>⬇ <span data-i18n="download">Download</span></a>
-          <a class="button" id="file-open" target="_blank" rel="noopener" data-i18n="open">Open</a>
+          <a class="dl-button dl-button-primary" id="file-download" download>⬇ <span data-i18n="download">Download</span></a>
+          <a class="dl-button" id="file-open" target="_blank" rel="noopener" data-i18n="open">Open</a>
         </div>
       </div>
       <div class="preview" id="preview"></div>
       <nav class="row spread pager" id="pager" hidden>
-        <a class="button" id="prev" data-i18n="previous">← Previous</a>
-        <a class="button" id="next" data-i18n="next">Next →</a>
+        <a class="dl-button" id="prev" data-i18n="previous">← Previous</a>
+        <a class="dl-button" id="next" data-i18n="next">Next →</a>
       </nav>
     </section>
   </main>
-  <footer class="bottom"><span data-i18n="sharedVia">Shared via</span> <a href="https://dliu.com">dliu.com</a></footer>
+  <footer class="dl-footer"><a href="https://dliu.com">dliu.com</a> · <a href="/docs" data-i18n="docs">Docs</a></footer>
 </body>
 </html>

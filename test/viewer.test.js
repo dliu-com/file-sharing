@@ -40,7 +40,9 @@ describe('viewer function', () => {
     expect((await handler(request('/admin/'))).uri).toBe('/_app/admin.html');
     expect((await handler(request('/docs'))).uri).toBe('/_app/docs.html');
     expect((await handler(request('/robots.txt'))).uri).toBe('/_app/robots.txt');
-    expect((await handler(request('/favicon.ico'))).uri).toBe('/_app/logo.svg');
+    const favicon = await handler(request('/favicon.ico'));
+    expect(favicon.statusCode).toBe(301);
+    expect(favicon.headers.location.value).toBe('https://files.dliu.com/dliu.com/favicon.png');
   });
 
   test('anything else is the link-not-found page', async () => {

@@ -4,8 +4,6 @@
 
 const STRINGS = {
   en: {
-    switchTo: '中文',
-    switchLabel: '切换到中文',
     loading: 'Loading…',
     name: 'Name',
     size: 'Size',
@@ -41,8 +39,6 @@ const STRINGS = {
     security: 'Security',
   },
   zh: {
-    switchTo: 'EN',
-    switchLabel: 'Switch to English',
     loading: '加载中…',
     name: '名称',
     size: '大小',
@@ -109,27 +105,57 @@ export function t(key, vars = {}) {
 export const say = (zh, en) => (lang === 'zh' ? zh : en);
 
 function docsButton() {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('class', 'icon');
-  for (const d of ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6M9 17h6']) {
-    const path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', d);
-    svg.append(path);
-  }
   const link = document.createElement('a');
-  link.className = 'button docs';
+  link.className = 'dl-button';
   link.href = '/docs';
   link.title = t('docsTitle');
-  link.setAttribute('aria-label', t('docs'));
-  const label = document.createElement('span');
-  label.className = 'label';
-  label.textContent = t('docs');
-  link.append(svg, label);
+  link.textContent = t('docs');
   if (/^\/docs\/?$/.test(location.pathname)) link.setAttribute('aria-current', 'page');
   return link;
+}
+
+// The shared dl-language switcher: both languages side by side, or a 文/A menu on narrow screens.
+function languageSwitcher() {
+  const box = document.createElement('div');
+  box.className = 'dl-language';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'dl-button dl-language-toggle';
+  toggle.setAttribute('aria-controls', 'dl-languages');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-label', 'Language / 语言');
+  toggle.textContent = '文/A';
+  const group = document.createElement('div');
+  group.id = 'dl-languages';
+  group.className = 'dl-languages';
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', 'Language / 语言');
+  const setOpen = (open) => {
+    group.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  for (const [code, htmlLang, label] of [['zh', 'zh-CN', '中文'], ['en', 'en', 'English']]) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.language = code;
+    button.lang = htmlLang;
+    button.textContent = label;
+    button.setAttribute('aria-pressed', String(code === lang));
+    button.addEventListener('click', () => {
+      setOpen(false);
+      if (code === lang) return;
+      try {
+        localStorage.setItem(STORAGE_KEY, code);
+      } catch { /* storage blocked: the switch only lasts for this page */ }
+      location.reload();
+    });
+    group.append(button);
+  }
+  toggle.addEventListener('click', () => setOpen(!group.classList.contains('is-open')));
+  document.addEventListener('click', (event) => { if (!box.contains(event.target)) setOpen(false); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setOpen(false); });
+  box.append(toggle, group);
+  return box;
 }
 
 function apply() {
@@ -140,27 +166,10 @@ function apply() {
   for (const node of document.querySelectorAll('[data-i18n-label]')) node.setAttribute('aria-label', t(node.dataset.i18nLabel));
   for (const node of document.querySelectorAll('[data-lang]')) node.hidden = node.dataset.lang !== lang;
 
-  const header = document.querySelector('header.top');
-  if (!header) return;
-  let nav = header.querySelector('nav');
-  if (!nav) {
-    nav = document.createElement('nav');
-    header.append(nav);
-  }
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'button lang';
-  button.lang = lang === 'zh' ? 'en' : 'zh-CN';
-  button.textContent = t('switchTo');
-  button.title = t('switchLabel');
-  button.setAttribute('aria-label', t('switchLabel'));
-  button.addEventListener('click', () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, lang === 'zh' ? 'en' : 'zh');
-    } catch { /* storage blocked: the switch only lasts for this page */ }
-    location.reload();
-  });
-  nav.prepend(docsButton(), button);
+  const nav = document.querySelector('header.dl-header .dl-nav');
+  if (!nav) return;
+  nav.prepend(docsButton());
+  nav.append(languageSwitcher());
 }
 
 apply();

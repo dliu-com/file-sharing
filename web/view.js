@@ -26,8 +26,8 @@ const parentOf = (path) => path.split('/').slice(0, -1).join('/');
 function status(message, retry) {
   const node = $('status');
   node.hidden = false;
-  node.className = retry === undefined ? 'muted' : 'error';
-  node.replaceChildren(message, retry ? el('button', { type: 'button', class: 'retry', onclick: () => location.reload() }, t('retry')) : '');
+  node.className = retry === undefined ? 'dl-muted' : 'dl-error';
+  node.replaceChildren(message, retry ? el('button', { type: 'button', class: 'dl-button dl-button-small retry', onclick: () => location.reload() }, t('retry')) : '');
 }
 
 function crumbs(path, isFile) {
@@ -45,7 +45,7 @@ function crumbs(path, isFile) {
 }
 
 function downloadButton(path, name) {
-  return el('a', { class: 'button download', href: fileUrl(path, name, true), download: name, title: t('downloadFile', { name }) },
+  return el('a', { class: 'dl-button dl-button-small download', href: fileUrl(path, name, true), download: name, title: t('downloadFile', { name }) },
     '⬇', el('span', { class: 'label' }, ` ${t('download')}`));
 }
 
@@ -79,7 +79,7 @@ async function textPreview(url) {
   const text = new TextDecoder('utf-8', { fatal: false }).decode(await response.arrayBuffer());
   const range = /\/(\d+)$/.exec(response.headers.get('content-range') || '');
   const truncated = response.status === 206 && range && Number(range[1]) > TEXT_PREVIEW_BYTES;
-  return [el('pre', { class: 'text' }, text), truncated ? el('p', { class: 'muted small' }, t('previewTruncated')) : ''];
+  return [el('pre', { class: 'text' }, text), truncated ? el('p', { class: 'dl-muted small' }, t('previewTruncated')) : ''];
 }
 
 async function showFile(data) {
@@ -101,17 +101,17 @@ async function showFile(data) {
   else if (kind === 'video') preview.replaceChildren(el('video', { src: view, controls: true, preload: 'metadata', playsinline: true }));
   else if (kind === 'audio') preview.replaceChildren(el('audio', { src: view, controls: true, preload: 'metadata' }));
   else if (kind === 'pdf') {
-    const pages = el('div', { class: 'pdf' }, el('p', { class: 'muted' }, t('previewLoading')));
+    const pages = el('div', { class: 'pdf' }, el('p', { class: 'dl-muted' }, t('previewLoading')));
     preview.replaceChildren(pages);
     // If PDF.js can't read it (e.g. password-protected), fall back to the browser's own viewer.
     import('./pdf.js').then(({ renderPdf }) => renderPdf(pages, view))
       .catch(() => preview.replaceChildren(el('iframe', { src: view, title: data.name, class: 'pdf' })));
   } else if (kind === 'text') {
-    preview.replaceChildren(el('p', { class: 'muted' }, t('previewLoading')));
+    preview.replaceChildren(el('p', { class: 'dl-muted' }, t('previewLoading')));
     textPreview(view).then((nodes) => preview.replaceChildren(...nodes))
-      .catch(() => preview.replaceChildren(el('p', { class: 'muted' }, t('previewFailed'))));
+      .catch(() => preview.replaceChildren(el('p', { class: 'dl-muted' }, t('previewFailed'))));
   } else {
-    preview.replaceChildren(el('p', { class: 'muted no-preview' }, t('noPreview')));
+    preview.replaceChildren(el('p', { class: 'dl-muted no-preview' }, t('noPreview')));
   }
   if (shareKind === 'folder') pager(path).catch(() => {});
 }

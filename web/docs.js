@@ -221,7 +221,7 @@ function security(root) {
   root.append(table([say('测试', 'Test'), say('结果', 'Result'), say('状态', 'Status')], [
     [say('HTTP 降级', 'HTTP downgrade'), say('http:// 返回 301 到 https://；HSTS 一年', 'http:// answers 301 to https://; HSTS for a year'), PASS],
     [say('旧 TLS', 'Old TLS'), say('拒绝 TLS 1.0 和 1.1', 'TLS 1.0 and 1.1 refused'), PASS],
-    [say('安全响应头', 'Security headers'), say('CSP 只允许本站脚本、无内联；nosniff；no-referrer；noindex', 'CSP allows only this site’s scripts, no inline; nosniff; no-referrer; noindex'), PASS],
+    [say('安全响应头', 'Security headers'), say('CSP 只允许本站脚本、无内联（样式和图标另可来自 files.dliu.com 的共享界面）；nosniff；no-referrer；noindex', 'CSP allows only this site’s scripts, no inline (styles and the icon may also come from the shared UI on files.dliu.com); nosniff; no-referrer; noindex'), PASS],
     [say('不存在的 ID', 'Unknown IDs'), say('返回 404，不说明原因', 'Return 404 without saying why'), PASS],
     [say('路径穿越', 'Path traversal'), say('/f/<id>/../ 返回 404', '/f/<id>/../ returns 404'), PASS],
     [say('伪造 x-share-src', 'Forged x-share-src'), say('被删除，返回 404', 'Stripped; 404'), PASS],
@@ -262,7 +262,7 @@ function security(root) {
 
   root.append(more(say('每个页面的响应头', 'Response headers on every page'),
     table([say('响应头', 'Header'), say('值', 'Value')], [
-      [mono('Content-Security-Policy'), "default-src 'self'; script-src https://share.dliu.com/_app/; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"],
+      [mono('Content-Security-Policy'), "default-src 'self'; script-src https://share.dliu.com/_app/; style-src 'self' https://files.dliu.com/dliu.com/ui/; img-src 'self' data: blob: https://files.dliu.com/dliu.com/; media-src 'self' blob:; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"],
       [mono('Strict-Transport-Security'), 'max-age=31536000'],
       [mono('X-Content-Type-Options'), 'nosniff'],
       [mono('Referrer-Policy'), 'no-referrer'],
@@ -277,7 +277,7 @@ security(document.getElementById('security'));
 function show(scroll) {
   const current = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : TABS[0];
   for (const id of TABS) document.getElementById(id).hidden = id !== current;
-  for (const link of document.querySelectorAll('.info-tabs a')) {
+  for (const link of document.querySelectorAll('.dl-tabs a')) {
     if (link.dataset.tab === current) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
