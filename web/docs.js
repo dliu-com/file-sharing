@@ -130,6 +130,16 @@ function architecture(root) {
     [mono('/_app/vendor/*'), say('PDF.js', 'PDF.js'), say('边缘 1 天，浏览器 5 分钟', '1 day at edge, 5 min in browser')],
   ]));
 
+  add('h2', say('缓存如何清除', 'How cached copies are cleared'));
+  root.append(table([say('内容', 'What'), say('边缘缓存', 'At the edge'), say('怎么清除', 'Cleared by'), say('自动清除（S3 事件）', 'Auto clear (S3 events)')], [
+    [say('页面 HTML', 'Page HTML'), say('不保留', 'Not kept'), '—', say('不需要', 'Not needed')],
+    [mono('/_app/*'), num(say('1 天', '1 day')), say('每次发布自动清除', 'Every deploy'), say('不需要：只在发布时变化', 'Not needed: changes only on deploy')],
+    [mono('/f/…'), num(say('1 天', '1 day')), say('管理页“刷新”、修改或删除链接', 'Admin Refresh, editing or deleting the link'), say('不适用：文件在 OneDrive，不在 S3', 'Not possible: files live in OneDrive, not S3')],
+  ]));
+  root.append(callout('clock', say(
+    '在 OneDrive 改了同名文件后，如果不点“刷新”，朋友最多会看到旧版本约 1 天（浏览器里已打开过的再加 1 小时）。',
+    'If a file is replaced in OneDrive under the same name and Refresh isn’t clicked, friends can see the old copy for up to ~1 day (+1 hour in a browser that already opened it).')));
+
   add('h2', say('每个链接保存的数据', 'What each link stores'));
   root.append(table([say('字段', 'Field'), say('内容', 'Holds'), say('访问者可见', 'Visible to visitors')], [
     [mono('id'), say('10 位随机字符（KeyValueStore 的键）', '10 random characters (the KeyValueStore key)'), say('是', 'Yes')],

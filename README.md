@@ -100,7 +100,18 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 
 ### Caching and Refresh
 
-File bytes are cached by CloudFront for up to 1 day (7 days at most). After changing files in OneDrive, click **Refresh** on the admin page. It invalidates `/f/<id>*` and clears the listing cache. Changing a link's OneDrive source or deleting a link does the same automatically.
+| What | Edge copy | Browser | Cleared by |
+|---|---|---|---|
+| Page HTML (`/`, `/s/…`, `/admin`, `/docs`) | none (`no-cache`) | revalidates | not needed |
+| `/_app/*` scripts, styles, icons | 1 day (`s-maxage=86400`) | revalidates (`max-age=0, must-revalidate`) | every deploy invalidates `/_app/*` |
+| `/_app/vendor/*` (PDF.js) | 1 day | 5 min (+ `stale-while-revalidate`) | every deploy invalidates `/_app/vendor/*` |
+| `/f/<id>/…` file bytes | 1 day (Lambda@Edge sends `s-maxage=86400`; the cache policy's 7-day max TTL is only a cap) | 1 hour | admin **Refresh**, or editing / deleting the link (invalidates `/f/<id>*`) |
+| `/api/*`, `/auth/*` | none (`no-store`) | none | — |
+| Folder listings | none at CloudFront | none | the API Lambda keeps them in memory for 5 minutes; Refresh clears them |
+
+**Automatic clearing (S3 events → Lambda → invalidation): not used, by decision.** The only S3 bucket holds `/_app/`, which changes only on `make deploy`, and each deploy already invalidates it. The shared files come from OneDrive through Lambda@Edge, not from S3, so S3 events can't see their changes. Adding it would only spend the account's 1,000 free invalidation paths a month, which all dliu.com sites share.
+
+**Known staleness:** if a file is replaced in OneDrive under the same name and Refresh isn't clicked, friends can get the old bytes for up to about 1 day from the edge, plus up to 1 hour in a browser that already fetched it. Meanwhile the listing shows the new size and date after 5 minutes. A new file name gets a new URL, so it is never stale.
 
 ### Security
 
@@ -123,7 +134,7 @@ File bytes are cached by CloudFront for up to 1 day (7 days at most). After chan
 | `lambda/edge/sharepoint.js` | **All SharePoint-specific code**, shared by Lambda@Edge and the API |
 | `lambda/edge/index.js`, `lambda/edge/mime.js` | Lambda@Edge file proxy |
 | `lambda/api/` | API Lambda: sign-in (`auth.js`), settings from SSM (`config.js`), KeyValueStore (`store.js`), link management (`shares.js`), routing (`index.js`) |
-| `web/` | Static pages, uploaded to S3 under `/_app/`. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/`. HTML is `no-cache`; scripts, styles and icons are cached 1 day at the edge (invalidated on deploy) and revalidated by browsers; `vendor/` gets `max-age=300, s-maxage=86400, stale-while-revalidate=86400`. The distribution serves HTTP/2 and HTTP/3 |
+| `web/` | Static pages, uploaded to S3 under `/_app/`. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/`. Cache headers are in [Caching and Refresh](#caching-and-refresh). The distribution serves HTTP/2 and HTTP/3 |
 | `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make test`, `synth`, `diff`, `deploy` and `dev` run it) |
 | `test/` | Jest tests (`make test`) |
 
