@@ -28,7 +28,7 @@ A private file-sharing site. The owner keeps files in OneDrive and creates a nor
 
 On the admin page each link can be copied, edited (title, expiry, or a new OneDrive link, keeping the same short link), refreshed after files change in OneDrive, or deleted.
 
-**Friends:** open the short link. There is nothing to sign in to. They can browse subfolders, preview images, video, audio, PDF and text files (PDFs are drawn in the page with a self-hosted copy of Mozilla PDF.js, so they show even where the browser can't embed PDFs: Android, WeChat, Chrome set to download PDFs), and download any file with its Download button. The pages friends see (landing, viewer, link-not-found) are in Chinese or English: the browser's preferred language picks one, and the 中文 / English switch at the end of the header (a 文/A menu on phones) changes and remembers the choice (`localStorage.lang`). The strings live in `web/i18n.js`. The admin page is English only. The DL icon in the top left goes to dliu.com, "DL Share" next to it goes to the home page, and every page has a Docs button.
+**Friends:** open the short link. There is nothing to sign in to. They can browse subfolders, preview images, video, audio, PDF and text files (PDFs are drawn in the page with a self-hosted copy of Mozilla PDF.js, so they show even where the browser can't embed PDFs: Android, WeChat, Chrome set to download PDFs), and download any file with its Download button. The pages friends see (landing, viewer, link-not-found) are in Chinese or English: the browser's preferred language picks one, and the 中文 / English switch at the end of the header (a 文/A menu on phones) changes and remembers the choice (`localStorage.lang`). The strings live in `web/i18n.js`. The admin page is English only. The DL Share logo (`web/logo.svg`, also the favicon) in the top left goes to dliu.com, "DL Share" next to it goes to the home page, and every page has a Docs button.
 
 ## How it works
 
@@ -122,7 +122,7 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 ### China reachability
 
 - CloudFront uses `PriceClass_All`, so visitors are served from Hong Kong, Tokyo or Singapore.
-- Viewer pages load nothing from Google, Microsoft or other third-party CDNs. Besides `/_app/` they load only the shared stylesheet and DL icon from `files.dliu.com` (also CloudFront `PriceClass_All`). Only `/admin` sign-in goes to Microsoft.
+- Viewer pages load nothing from Google, Microsoft or other third-party CDNs. Besides `/_app/` they load only the shared stylesheets from `files.dliu.com` (also CloudFront `PriceClass_All`). Only `/admin` sign-in goes to Microsoft.
 - Reachability should be checked from mainland China, for example with boce.com or 17ce.com.
 
 ## Code
@@ -134,7 +134,7 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 | `lambda/edge/sharepoint.js` | **All SharePoint-specific code**, shared by Lambda@Edge and the API |
 | `lambda/edge/index.js`, `lambda/edge/mime.js` | Lambda@Edge file proxy |
 | `lambda/api/` | API Lambda: sign-in (`auth.js`), settings from SSM (`config.js`), KeyValueStore (`store.js`), link management (`shares.js`), routing (`index.js`) |
-| `web/` | Static pages, uploaded to S3 under `/_app/`. They use the [shared dliu.com look](https://files.dliu.com/dliu.com/README.md): `dl.css` (and `dl-docs.css` on the docs page) and the DL icon load from `files.dliu.com` first, with the `dl-header`/`dl-footer` markup and `dl-*` buttons; `web/style.css` holds only this site's rules (file tables, previews, the PDF viewer) on the `--dl-*` colours, and `test/shared-ui.test.js` guards it. `/favicon.ico` redirects to the DL icon. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/`. Cache headers are in [Caching and Refresh](#caching-and-refresh). The distribution serves HTTP/2 and HTTP/3 |
+| `web/` | Static pages, uploaded to S3 under `/_app/`. They use the [shared dliu.com look](https://files.dliu.com/dliu.com/README.md): `dl.css` (and `dl-docs.css` on the docs page) load from `files.dliu.com` first, with the `dl-header`/`dl-footer` markup and `dl-*` buttons; `web/style.css` holds only this site's rules (file tables, previews, the PDF viewer) on the `--dl-*` colours, and `test/shared-ui.test.js` guards it. The site keeps its own logo, `web/logo.svg`, in the header and as the favicon (`/favicon.ico` serves it) instead of the shared DL icon. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/`. Cache headers are in [Caching and Refresh](#caching-and-refresh). The distribution serves HTTP/2 and HTTP/3 |
 | `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make test`, `synth`, `diff`, `deploy` and `dev` run it) |
 | `test/` | Jest tests (`make test`) |
 

@@ -5,13 +5,14 @@ const path = require('path');
 const read = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const DL_CSS = '<link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css">';
 const APP_CSS = '<link rel="stylesheet" href="/_app/style.css">';
-const DL_ICON = 'https://files.dliu.com/dliu.com/favicon.png';
+// DL Share keeps its own logo instead of the DL icon (user decision).
+const LOGO = '/_app/logo.svg';
 const PAGES = ['index', 'admin', 'view', 'docs'];
 
 // The link-not-found page that the CloudFront Function returns, as plain HTML.
 function notFoundPage() {
   const source = read('functions/viewer.js');
-  const ICON = DL_ICON;
+  const ICON = LOGO;
   const body = source.slice(source.indexOf('const NOT_FOUND ='), source.indexOf("';\n", source.indexOf('const NOT_FOUND =')) + 2);
   return new Function('ICON', `${body}; return NOT_FOUND;`)(ICON);
 }
@@ -26,16 +27,16 @@ test('every page loads the shared dliu.com stylesheet before its own', () => {
   }
 });
 
-test('every page has the shared header with the DL icon, and the shared footer', () => {
+test('every page has the shared header with the DL Share logo, and the shared footer', () => {
   for (const [, page] of pages()) {
-    expect(page).toContain(`<link rel="icon" type="image/png" href="${DL_ICON}">`);
+    expect(page).toContain(`<link rel="icon" type="image/svg+xml" href="${LOGO}">`);
     expect(page).toContain('<body class="dl-page">');
-    expect(page).toContain(`<a class="dl-logo" href="https://dliu.com" aria-label="dliu.com"><img src="${DL_ICON}"`);
+    expect(page).toContain(`<a class="dl-logo" href="https://dliu.com" aria-label="dliu.com"><img src="${LOGO}" alt="DL Share"`);
     expect(page).toContain('<a class="dl-brand" href="/">DL Share</a>');
     expect(page).toContain('<nav class="dl-nav" aria-label="Site"');
     expect(page).toMatch(/<main class="dl-main[" ]/);
     expect(page).toContain('<footer class="dl-footer"><a href="https://dliu.com">dliu.com</a>');
-    expect(page).not.toContain('logo.svg');
+    expect(page).not.toContain('files.dliu.com/dliu.com/favicon.png');
   }
 });
 
