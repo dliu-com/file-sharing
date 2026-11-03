@@ -183,7 +183,7 @@ make outputs    # shows SiteUrl, AuthRedirectUri, DistributionId, …
 
 Sign-in setup, once:
 1. In Microsoft Entra, add the redirect URI `https://share.dliu.com/auth/callback` (type Web) to an app registration. The files.dliu.com app registration can be reused. The app needs no API permissions beyond `openid`.
-2. Run `make set-secrets`. It stores the tenant ID, client ID and client secret under `/share/` in SSM. It offers the values from `/share/` or `/files/` as defaults, and reuses the files.dliu.com secret when the same client ID is used.
+2. Run `make set-secrets`. It stores the client ID and client secret under `/share/` in SSM. It offers the values from `/share/` or `/files/` as defaults, and reuses the files.dliu.com secret when the same client ID is used. The tenant ID isn't stored here: the API reads the shared `/dliu/entra-tenant-id` (String) parameter from the dliu-com/audit stack, with `ssm:GetParameters` granted on exactly that ARN.
 
 Then sign in at `https://share.dliu.com/admin` and create a link.
 

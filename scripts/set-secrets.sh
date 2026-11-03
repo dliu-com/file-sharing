@@ -8,6 +8,8 @@ set -euo pipefail
 REGION="${AWS_REGION:-eu-west-1}"
 PREFIX="${PARAMETER_PREFIX:-/share}"
 OTHER="${REUSE_PREFIX:-/files}"
+# The tenant ID is shared by every dliu.com app and is managed by the dliu-com/audit stack, not here.
+TENANT_PARAMETER="/dliu/entra-tenant-id"
 
 get() { # full-name
   aws ssm get-parameter --region "$REGION" --name "$1" --with-decryption --query Parameter.Value --output text 2>/dev/null || true
@@ -45,11 +47,12 @@ default() { # name: the current value, else the one under $OTHER
 echo "Microsoft Entra settings for share.dliu.com (region $REGION)."
 echo "In the app registration, add the Web redirect URI: https://share.dliu.com/auth/callback"
 echo "Press Enter to keep the value shown in brackets (taken from $PREFIX, or else from $OTHER)."
-prompt TENANT_ID "Directory (tenant) ID" "$(default entra-tenant-id)"
+[[ -n "$(get "$TENANT_PARAMETER")" ]] || { echo "$TENANT_PARAMETER is missing; deploy the dliu-com/audit stack first." >&2; exit 1; }
+echo "Tenant ID: shared, read from $TENANT_PARAMETER."
 prompt CLIENT_ID "Application (client) ID" "$(default entra-client-id)"
 read -r -s -p "Client secret VALUE (hidden; Enter to keep the current one or reuse $OTHER's when the client ID matches): " CLIENT_SECRET; echo
 
-[[ -n "$TENANT_ID" && -n "$CLIENT_ID" ]] || { echo "Tenant ID and client ID are required." >&2; exit 1; }
+[[ -n "$CLIENT_ID" ]] || { echo "Client ID is required." >&2; exit 1; }
 
 if [[ -z "$CLIENT_SECRET" && -z "$(get "$PREFIX/entra-client-secret")" ]]; then
   if [[ "$CLIENT_ID" == "$(get "$OTHER/entra-client-id")" ]]; then
@@ -58,7 +61,6 @@ if [[ -z "$CLIENT_SECRET" && -z "$(get "$PREFIX/entra-client-secret")" ]]; then
   [[ -n "$CLIENT_SECRET" ]] || { echo "No client secret stored yet; run again and enter it." >&2; exit 1; }
 fi
 
-put entra-tenant-id String "$TENANT_ID"
 put entra-client-id String "$CLIENT_ID"
 [[ -z "$CLIENT_SECRET" ]] || put entra-client-secret SecureString "$CLIENT_SECRET"
 echo "Done. The app picks up changes within 5 minutes."

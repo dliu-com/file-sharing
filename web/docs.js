@@ -153,7 +153,7 @@ function architecture(root) {
   root.append(more(say('构建、部署和测试', 'Build, deploy and test'), list([
     say('一个 AWS CDK 栈（TypeScript），在 eu-west-1；Lambda@Edge 和证书在 us-east-1。', 'One AWS CDK stack (TypeScript) in eu-west-1; Lambda@Edge and the certificate are in us-east-1.'),
     say('make deploy 一起部署网页和基础设施。', 'make deploy ships the pages and infrastructure together.'),
-    say('Microsoft 登录密钥用脚本写入 Parameter Store，不在代码中。', 'The Microsoft sign-in secret is written to Parameter Store by a script, never into the code.'),
+    say('Microsoft 登录密钥用脚本写入 Parameter Store，不在代码中。租户 ID 是所有 dliu.com 应用共用的 /dliu/entra-tenant-id。', 'The Microsoft sign-in secret is written to Parameter Store by a script, never into the code. The tenant ID is /dliu/entra-tenant-id, shared by every dliu.com app.'),
     say('Jest 单元测试覆盖链接检查函数、API、Lambda@Edge 和整个栈；冒烟测试在线上创建、打开并删除测试链接。', 'Jest tests cover the link check, API, Lambda@Edge and the stack; a smoke test creates, opens and deletes a link on the live site.'),
     say('本站不收集 CloudFront 访问日志（traffic.dliu.com 不统计本站），也不运行统计脚本。', 'This site collects no CloudFront access logs (traffic.dliu.com does not count it) and runs no analytics code.'),
   ])));
@@ -332,8 +332,8 @@ function security(root) {
       'A session lasts 12 hours and cannot be revoked server-side; signing out only clears cookies. GET /auth/logout can be triggered cross-site (it can only sign the owner out).',
     ), ACCEPTED],
     [mono('SEC-7'), say('低', 'Low'), say(
-      'IAM 通配符：CDK 内部的证书和部署辅助函数（acm:*、cloudfront:CreateInvalidation 作用于 *）；API 的 kms:Decrypt 作用于 *，但限定只能经 eu-west-1 的 SSM 调用；ssm:GetParameters 只限 /share/*。',
-      'IAM wildcards: CDK’s own certificate and deployment helpers (acm:*, cloudfront:CreateInvalidation on *); the API’s kms:Decrypt on * is limited to calls through SSM in eu-west-1; ssm:GetParameters is limited to /share/*.',
+      'IAM 通配符：CDK 内部的证书和部署辅助函数（acm:*、cloudfront:CreateInvalidation 作用于 *）；API 的 kms:Decrypt 作用于 *，但限定只能经 eu-west-1 的 SSM 调用；ssm:GetParameters 只限 /share/* 和共用的 /dliu/entra-tenant-id。',
+      'IAM wildcards: CDK’s own certificate and deployment helpers (acm:*, cloudfront:CreateInvalidation on *); the API’s kms:Decrypt on * is limited to calls through SSM in eu-west-1; ssm:GetParameters is limited to /share/* and the shared /dliu/entra-tenant-id.',
     ), ACCEPTED],
     [mono('SEC-8'), say('低', 'Low'), say(
       'Lambda@Edge 在 us-east-1 以外的区域并发配额为 10：它限制了费用，但流量大时可能出现 503。免费提高配额是站长的决定。',

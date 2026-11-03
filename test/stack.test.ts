@@ -76,10 +76,15 @@ test('API can read and write the KeyValueStore, read its secrets and invalidate'
     Runtime: 'nodejs22.x',
     Architectures: ['arm64'],
     ReservedConcurrentExecutions: 10,
-    Environment: { Variables: Match.objectLike({ PARAMETER_PREFIX: '/share', KVS_ARN: Match.anyValue() }) },
+    Environment: { Variables: Match.objectLike({ PARAMETER_PREFIX: '/share', TENANT_PARAMETER: '/dliu/entra-tenant-id', KVS_ARN: Match.anyValue() }) },
   });
   const statements = Object.values(template.findResources('AWS::IAM::Policy'))
     .flatMap((p: any) => p.Properties.PolicyDocument.Statement);
+  const ssmRead = statements.find((s: any) => s.Action === 'ssm:GetParameters');
+  const resources = JSON.stringify(ssmRead.Resource);
+  expect(resources).toContain(':parameter/share/*');
+  expect(resources).toContain(':parameter/dliu/entra-tenant-id"');
+  expect(resources).not.toContain(':parameter/dliu/*');
   const actions = statements.flatMap((s: any) => [].concat(s.Action));
   expect(actions).toEqual(expect.arrayContaining([
     'cloudfront-keyvaluestore:PutKey', 'cloudfront-keyvaluestore:DeleteKey', 'cloudfront-keyvaluestore:GetKey',

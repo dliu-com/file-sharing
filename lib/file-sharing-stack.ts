@@ -93,9 +93,15 @@ export class FileSharingStack extends Stack {
         removalPolicy: RemovalPolicy.DESTROY,
       }),
     });
+    // The tenant ID is shared by all dliu.com apps (dliu-com/audit stack); the client ID and secret stay under /share.
+    const TENANT_PARAMETER = '/dliu/entra-tenant-id';
+    api.addEnvironment('TENANT_PARAMETER', TENANT_PARAMETER);
     api.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ssm:GetParameters'],
-      resources: [this.formatArn({ service: 'ssm', resource: 'parameter', resourceName: PARAMETER_PREFIX.slice(1) + '/*' })],
+      resources: [
+        this.formatArn({ service: 'ssm', resource: 'parameter', resourceName: PARAMETER_PREFIX.slice(1) + '/*' }),
+        this.formatArn({ service: 'ssm', resource: 'parameter', resourceName: TENANT_PARAMETER.slice(1) }),
+      ],
     }));
     api.addToRolePolicy(new iam.PolicyStatement({
       actions: ['kms:Decrypt'],
