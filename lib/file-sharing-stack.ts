@@ -75,6 +75,9 @@ export class FileSharingStack extends Stack {
       architecture: lambda.Architecture.ARM_64,
       timeout: Duration.seconds(30),
       memorySize: 256,
+      // Anyone can reach this function through /auth/* and /api/*. A cap keeps a flood from using up the account's
+      // shared Lambda concurrency (other sites run in this region) and bounds the cost; ten covers the owner and friends.
+      reservedConcurrentExecutions: 10,
       description: 'share.dliu.com folder listing, sign-in (Microsoft Entra) and link management',
       environment: {
         SITE_URL: siteUrl,

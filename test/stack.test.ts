@@ -68,6 +68,7 @@ test('API can read and write the KeyValueStore, read its secrets and invalidate'
   template.hasResourceProperties('AWS::Lambda::Function', {
     Runtime: 'nodejs22.x',
     Architectures: ['arm64'],
+    ReservedConcurrentExecutions: 10,
     Environment: { Variables: Match.objectLike({ PARAMETER_PREFIX: '/share', KVS_ARN: Match.anyValue() }) },
   });
   const statements = Object.values(template.findResources('AWS::IAM::Policy'))
