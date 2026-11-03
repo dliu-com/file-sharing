@@ -15,9 +15,13 @@ const b64url = (buf) => Buffer.from(buf).toString('base64url');
 const fromB64url = (str) => Buffer.from(str, 'base64url');
 const nowSeconds = (now) => Math.floor(now / 1000);
 
-function sessionKey(config) {
-  return crypto.createHmac('sha256', config.clientSecret).update('share-session-v1').digest();
+// Each signed token type has its own key and names its type in the payload, so the sign-in cookie (which anyone
+// gets from /auth/login) can never be replayed as an owner session.
+function tokenKey(config, purpose) {
+  return crypto.createHmac('sha256', config.clientSecret).update(`share-${purpose}-v1`).digest();
 }
+const sessionKey = (config) => tokenKey(config, 'session');
+const authKey = (config) => tokenKey(config, 'auth');
 
 function sign(payload, key) {
   const body = b64url(JSON.stringify(payload));
@@ -69,8 +73,13 @@ function authority(config) {
   return `https://login.microsoftonline.com/${encodeURIComponent(config.tenantId)}`;
 }
 
+function signSession({ user, name, oid }, config, now = Date.now(), seconds = SESSION_SECONDS) {
+  return sign({ typ: 'session', user, name, oid, exp: nowSeconds(now) + seconds }, sessionKey(config));
+}
+
 function getSession(event, config, now = Date.now()) {
-  return verifySigned(parseCookies(event)[SESSION_COOKIE], sessionKey(config), now);
+  const session = verifySigned(parseCookies(event)[SESSION_COOKIE], sessionKey(config), now);
+  return session && session.typ === 'session' && typeof session.user === 'string' && session.user ? session : null;
 }
 
 function startLogin(config, siteUrl, now = Date.now(), returnTo = '/') {
@@ -78,7 +87,7 @@ function startLogin(config, siteUrl, now = Date.now(), returnTo = '/') {
   const nonce = b64url(crypto.randomBytes(24));
   const verifier = b64url(crypto.randomBytes(48));
   const challenge = b64url(crypto.createHash('sha256').update(verifier).digest());
-  const transient = sign({ state, nonce, verifier, returnTo: safeReturnPath(returnTo), exp: nowSeconds(now) + AUTH_SECONDS }, sessionKey(config));
+  const transient = sign({ typ: 'auth', state, nonce, verifier, returnTo: safeReturnPath(returnTo), exp: nowSeconds(now) + AUTH_SECONDS }, authKey(config));
   const params = new URLSearchParams({
     client_id: config.clientId,
     response_type: 'code',
@@ -151,8 +160,8 @@ async function finishLogin(event, config, siteUrl, { fetchImpl = fetch, now = Da
     return { error: `Sign-in failed: ${code}`, status: 401, cookies: [clearAuth] };
   }
 
-  const transient = verifySigned(parseCookies(event)[AUTH_COOKIE], sessionKey(config), now);
-  if (!transient || !query.state || query.state !== transient.state || !query.code) {
+  const transient = verifySigned(parseCookies(event)[AUTH_COOKIE], authKey(config), now);
+  if (!transient || transient.typ !== 'auth' || !query.state || query.state !== transient.state || !query.code) {
     return { error: 'Sign-in expired or invalid. Please try again.', status: 400, cookies: [clearAuth] };
   }
 
@@ -181,12 +190,7 @@ async function finishLogin(event, config, siteUrl, { fetchImpl = fetch, now = Da
     return { error: `${claims.preferred_username || 'This account'} is not allowed to manage shares.`, status: 403, cookies: [clearAuth] };
   }
 
-  const session = sign({
-    user: claims.preferred_username || claims.email || claims.oid,
-    name: claims.name,
-    oid: claims.oid,
-    exp: nowSeconds(now) + SESSION_SECONDS,
-  }, sessionKey(config));
+  const session = signSession({ user: claims.preferred_username || claims.email || claims.oid, name: claims.name, oid: claims.oid }, config, now);
   return {
     location: safeReturnPath(transient.returnTo),
     cookies: [clearAuth, cookie(SESSION_COOKIE, session, SESSION_SECONDS), cookie(OWNER_HINT_COOKIE, '1', SESSION_SECONDS, { httpOnly: false })],
@@ -209,6 +213,7 @@ module.exports = {
   safeReturnPath,
   sessionKey,
   sign,
+  signSession,
   startLogin,
   verifyIdToken,
   verifySigned,

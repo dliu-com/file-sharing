@@ -26,7 +26,7 @@ function testLink() {
 const param = (name) => execFileSync('aws', ['ssm', 'get-parameter', '--region', REGION, '--name', `${PREFIX}/${name}`,
   '--with-decryption', '--query', 'Parameter.Value', '--output', 'text']).toString().trim();
 const config = { clientSecret: param('entra-client-secret') };
-const session = auth.sign({ user: `smoke-test@${new URL(SITE).hostname}`, name: 'Smoke test', exp: Math.floor(Date.now() / 1000) + 600 }, auth.sessionKey(config));
+const session = auth.signSession({ user: `smoke-test@${new URL(SITE).hostname}`, name: 'Smoke test' }, config, Date.now(), 600);
 const cookie = `${auth.SESSION_COOKIE}=${session}`;
 
 function check(condition, message) {

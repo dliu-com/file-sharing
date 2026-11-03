@@ -36,7 +36,7 @@ function setup() {
   return { handler, records, sharepoint, invalidate };
 }
 
-const session = auth.sign({ user: 'owner@example.com', name: 'Owner', exp: NOW / 1000 + 600 }, auth.sessionKey(config));
+const session = auth.signSession({ user: 'owner@example.com', name: 'Owner' }, config, NOW, 600);
 
 function event(method, rawPath, { body, headers = {}, signedIn = true, query } = {}) {
   return {
@@ -172,6 +172,42 @@ describe('sign-in', () => {
     expect(location.origin).toBe('https://login.microsoftonline.com');
     expect(location.searchParams.get('redirect_uri')).toBe(`${SITE}/auth/callback`);
     expect(result.cookies.join()).toContain(auth.AUTH_COOKIE);
+  });
+
+  test('the sign-in cookie from /auth/login is never accepted as a session', async () => {
+    const { handler } = setup();
+    const login = await handler(event('GET', '/auth/login', { signedIn: false }));
+    const transient = login.cookies.find((c) => c.startsWith(`${auth.AUTH_COOKIE}=`)).split(';')[0].split('=')[1];
+    const forged = { ...event('GET', '/api/me', { signedIn: false }), cookies: [`${auth.SESSION_COOKIE}=${transient}`] };
+    expect((await handler(forged)).statusCode).toBe(401);
+    const shares = { ...event('GET', '/api/shares', { signedIn: false }), cookies: [`${auth.SESSION_COOKIE}=${transient}`] };
+    expect((await handler(shares)).statusCode).toBe(401);
+  });
+
+  test('a session is never accepted as the sign-in cookie', async () => {
+    const { handler } = setup();
+    const callback = { ...event('GET', '/auth/callback', { signedIn: false, query: { code: 'c', state: 's' } }), cookies: [`${auth.AUTH_COOKIE}=${session}`] };
+    expect((await handler(callback)).statusCode).toBe(400);
+  });
+
+  test('forged, tampered, untyped and expired sessions are refused', async () => {
+    const { handler } = setup();
+    const key = auth.sessionKey(config);
+    const [body, mac] = session.split('.');
+    const tampered = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, 'base64url')), user: 'evil@example.com' })).toString('base64url');
+    const tokens = [
+      auth.signSession({ user: 'owner@example.com' }, { clientSecret: 'other' }, NOW, 600),
+      `${tampered}.${mac}`,
+      auth.sign({ user: 'owner@example.com', exp: NOW / 1000 + 600 }, key),
+      auth.sign({ typ: 'session', exp: NOW / 1000 + 600 }, key),
+      auth.signSession({ user: 'owner@example.com' }, config, NOW - 700_000, 600),
+      `${body}.${mac}.x`,
+      'none',
+    ];
+    for (const token of tokens) {
+      const request = { ...event('GET', '/api/me', { signedIn: false }), cookies: [`${auth.SESSION_COOKIE}=${token}`] };
+      expect((await handler(request)).statusCode).toBe(401);
+    }
   });
 
   test('logout clears the cookies', async () => {

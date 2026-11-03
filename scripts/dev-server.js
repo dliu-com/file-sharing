@@ -19,7 +19,7 @@ const edge = require('../lambda/edge/index');
 
 const WEB = path.join(__dirname, '../web');
 const config = { tenantId: 'dev', clientId: 'dev', clientSecret: 'dev', allowedDomain: 'example.com' };
-const sessionCookie = `${auth.SESSION_COOKIE}=${auth.sign({ user: 'dev@example.com', name: 'Dev owner', exp: 4102444800 }, auth.sessionKey(config))}`;
+const sessionCookie = `${auth.SESSION_COOKIE}=${auth.signSession({ user: 'dev@example.com', name: 'Dev owner' }, config, Date.now(), 10 * 365 * 24 * 3600)}`;
 
 const records = new Map();
 const store = {
