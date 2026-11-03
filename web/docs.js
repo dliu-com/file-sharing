@@ -325,7 +325,7 @@ function security(root) {
     [mono('SEC-5'), say('低', 'Low'), say(
       '站长判断只看 Microsoft 账号是否为本租户的 @dliu.com，没有对象 ID 白名单；租户里的任何账号都能管理链接。',
       'The owner check only requires an @dliu.com account in this tenant, with no object-ID allow-list; any account in the tenant could manage links.',
-    ), DECIDE],
+    ) + say('站长接受（2026-11-03）：在 Microsoft Entra 应用中管理谁可以登录。', ' Accepted by the owner (3 November 2026): who can sign in is managed in the Microsoft Entra app.'), ACCEPTED],
     [mono('SEC-6'), say('低', 'Low'), say(
       '会话 12 小时有效，无法在服务器端撤销；退出只清除 Cookie。GET /auth/logout 可被跨站触发（只会让站长退出）。',
       'A session lasts 12 hours and cannot be revoked server-side; signing out only clears cookies. GET /auth/logout can be triggered cross-site (it can only sign the owner out).',

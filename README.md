@@ -134,7 +134,9 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 
 No WAF or rate limit (SEC-4): the owner decided against WAF (about $6+ a month) on 2026-11-03 and accepts the risk, because links go only to friends and a misused link can be deleted.
 
-Open owner decisions: log retention for the Lambda@Edge and CDK helper log groups (SEC-3), an object-ID allow-list or Entra user assignment for the owner (SEC-5), and raising the Lambda@Edge regional concurrency (SEC-8).
+Owner check (SEC-5): any @dliu.com account in the tenant counts as the owner. The owner accepted this on 2026-11-03 and manages who can sign in through the Microsoft Entra app, not in code.
+
+Open owner decisions: log retention for the Lambda@Edge and CDK helper log groups (SEC-3), and raising the Lambda@Edge regional concurrency (SEC-8).
 
 ### China reachability
 
