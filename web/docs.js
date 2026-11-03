@@ -155,7 +155,7 @@ function architecture(root) {
     say('make deploy 一起部署网页和基础设施。', 'make deploy ships the pages and infrastructure together.'),
     say('Microsoft 登录密钥用脚本写入 Parameter Store，不在代码中。', 'The Microsoft sign-in secret is written to Parameter Store by a script, never into the code.'),
     say('Jest 单元测试覆盖链接检查函数、API、Lambda@Edge 和整个栈；冒烟测试在线上创建、打开并删除测试链接。', 'Jest tests cover the link check, API, Lambda@Edge and the stack; a smoke test creates, opens and deletes a link on the live site.'),
-    say('访问量由 traffic.dliu.com 从 CloudFront 日志统计，本站不运行统计脚本。', 'Visits are counted by traffic.dliu.com from CloudFront logs; this site runs no analytics code.'),
+    say('本站不收集 CloudFront 访问日志（traffic.dliu.com 不统计本站），也不运行统计脚本。', 'This site collects no CloudFront access logs (traffic.dliu.com does not count it) and runs no analytics code.'),
   ])));
 }
 
@@ -204,7 +204,7 @@ function cost(root) {
     ['Parameter Store、KMS', say('标准参数免费；登录密钥用 aws/ssm 密钥解密，每月 2 万次请求免费', 'Standard parameters are free; the sign-in secret is decrypted with the aws/ssm key, 20,000 free requests a month'), num('$0')],
     ['CloudWatch Logs', say('Lambda 日志保留一个月，每 GB $0.57，每月只有几 KB', 'Lambda logs kept one month; $0.57 per GB, a few KB a month'), num('$0')],
     [say('证书和 DNS', 'Certificate and DNS'), say('ACM 公共证书免费；别名记录在已有的 dliu.com 区域中，查询免费', 'ACM public certificates are free; alias records in the existing dliu.com zone answer free'), num('$0')],
-    [say('访问日志', 'Traffic logs'), say('计入 traffic.dliu.com：每 GB 日志 $0.25', 'Billed to traffic.dliu.com: $0.25 per GB of log lines'), num('< $0.01')],
+    [say('访问日志', 'Traffic logs'), say('未启用：本站不收集 CloudFront 访问日志', 'Not enabled: this site collects no CloudFront access logs'), num('$0')],
   ]));
   root.append(callout('power', say(
     '没有 EC2、容器、负载均衡、NAT 网关、数据库或 WAF，所以不会因为“存在”而产生费用。删除所有链接后，账单实际为 $0。',
@@ -238,17 +238,25 @@ function cost(root) {
 }
 
 // ---------------------------------------------------------------- Security
+const REVIEWED = say('2026 年 11 月 3 日', '3 November 2026');
+const FIXED = (commit) => ({ text: say(`已修复 ${commit}`, `Fixed ${commit}`), className: 'status fixed' });
+const ACCEPTED = { text: say('接受', 'Accepted'), className: 'status' };
+const DECIDE = { text: say('待站长决定', 'Owner to decide'), className: 'risk-medium' };
+
 function security(root) {
   const add = writer(root);
   add('h2', say('安全', 'Security'));
   add('p', say('有链接的人可以查看；只有站长能创建、修改或删除链接。', 'Anyone with a link can view it; only the owner can create, change or delete links.'), 'lead');
-  root.append(callout('shield', say('以下 16 项检查已在 share.dliu.com 线上实测，全部通过。', 'The 16 checks below were run against the live share.dliu.com; all passed.')));
+  root.append(callout('shield', say(
+    `全面安全审查（${REVIEWED}）：威胁建模、233 项线上渗透测试（93 项匿名 + 140 项带站长会话）、逐个阅读处理程序、依赖和密钥扫描。发现 1 个严重和 1 个中等问题，均已修复并在线上复测。`,
+    `Thorough security review (${REVIEWED}): threat model, 233 live penetration tests (93 anonymous + 140 with an owner session), every handler read, dependency and secret scans. It found 1 critical and 1 medium issue; both are fixed and retested live.`,
+  )));
 
   root.append(stats([
     [say('8×10¹⁷', '8×10¹⁷'), say('可能的链接 ID（62¹⁰）', 'possible link IDs (62¹⁰)'), 'key'],
     [say('约 2.7 万年', '~27,000 years'), say('每秒猜 1 万次，碰中 100 个链接之一的平均时间', 'to hit one of 100 links at 10,000 guesses/s'), 'clock'],
     [say('0 个', '0'), say('OneDrive 账号权限：登录只要 openid、profile、email', 'OneDrive account permissions: sign-in asks only openid, profile, email'), 'lock'],
-    [say('12 小时', '12 hours'), say('站长登录有效期', 'owner session lifetime'), 'entra'],
+    [say('233 / 233', '233 / 233'), say(`线上渗透测试通过（${REVIEWED}）`, `live penetration tests passed (${REVIEWED})`), 'check'],
   ]));
 
   root.append(tiers({
@@ -272,7 +280,7 @@ function security(root) {
         label: 'Lambda', badge: say('应用', 'App'), tone: 'app', link: say('只接受 CloudFront 签名的请求（OAC）', 'only CloudFront-signed calls (OAC)'),
         nodes: [
           { icon: 'download', title: 'Lambda@Edge', text: say('没有 AWS 权限；只保留安全的响应头', 'No AWS permissions; keeps only safe headers') },
-          { icon: 'lock', title: 'API Lambda', text: say('管理操作需登录 + 本站 Origin', 'Owner actions need a session + this site’s Origin') },
+          { icon: 'lock', title: 'API Lambda', text: say('管理操作需登录 + 本站 Origin；最多同时运行 10 个', 'Owner actions need a session + this site’s Origin; at most 10 run at once') },
         ],
       },
       {
@@ -293,49 +301,149 @@ function security(root) {
     [say('SharePoint 访客 Cookie', 'SharePoint guest cookie'), say('否', 'No')],
     [say('站长的账号和邮箱', 'The owner’s account and email'), say('否', 'No')],
     [say('其他链接', 'Other links'), say('否，需要知道各自的 ID', 'No, each needs its own ID')],
+    [say('分享文件夹之外的内容', 'Anything outside the shared folder'), say('否：路径穿越返回 404，微软也拒绝上级文件夹（403）', 'No: traversal returns 404, and Microsoft refuses the parent folder (403)')],
   ]));
 
-  add('h2', say('线上渗透测试', 'Live penetration test'));
-  root.append(table([say('测试', 'Test'), say('结果', 'Result'), say('状态', 'Status')], [
-    [say('HTTP 降级', 'HTTP downgrade'), say('http:// 返回 301 到 https://；HSTS 一年', 'http:// answers 301 to https://; HSTS for a year'), PASS],
-    [say('旧 TLS', 'Old TLS'), say('拒绝 TLS 1.0 和 1.1', 'TLS 1.0 and 1.1 refused'), PASS],
-    [say('安全响应头', 'Security headers'), say('CSP 只允许本站脚本、无内联（样式和图标另可来自 files.dliu.com 的共享界面）；nosniff；no-referrer；noindex', 'CSP allows only this site’s scripts, no inline (styles and the icon may also come from the shared UI on files.dliu.com); nosniff; no-referrer; noindex'), PASS],
-    [say('不存在的 ID', 'Unknown IDs'), say('返回 404，不说明原因', 'Return 404 without saying why'), PASS],
-    [say('路径穿越', 'Path traversal'), say('/f/<id>/../ 返回 404', '/f/<id>/../ returns 404'), PASS],
-    [say('伪造 x-share-src', 'Forged x-share-src'), say('被删除，返回 404', 'Stripped; 404'), PASS],
-    [say('列表 API 泄漏', 'Listing API leaks'), say('不含 OneDrive / SharePoint 地址或 Cookie', 'No OneDrive/SharePoint URLs or cookies'), PASS],
-    [say('文件响应头', 'File response headers'), say('不转发 SharePoint 的 Cookie 和响应头', 'No SharePoint cookies or headers passed on'), PASS],
-    [say('HTML / SVG 文件', 'HTML / SVG files'), say('作为附件下载，不在本站运行', 'Downloaded as attachments, never rendered on this site'), PASS],
-    [say('未登录访问 API', 'API without a session'), say('/api/me、/api/shares 返回 401', '/api/me and /api/shares return 401'), PASS],
-    [say('跨站请求（CSRF）', 'Cross-site changes (CSRF)'), say('Origin 不是本站时返回 403', 'Origin other than this site gets 403'), PASS],
-    [say('登录回调', 'Sign-in callback'), say('伪造 state 返回 400', 'Forged state returns 400'), PASS],
-    [say('隐藏文件', 'Hidden files'), say('/.git/config、/.env、package.json 返回 404；无目录列表', '/.git/config, /.env, package.json return 404; no directory listing'), PASS],
-    [say('其他 HTTP 方法', 'Other HTTP methods'), say('页面上的 PUT、DELETE、PATCH 返回 403', 'PUT, DELETE and PATCH on pages return 403'), PASS],
-    [say('绕过 CloudFront', 'Bypassing CloudFront'), say('直接访问 Lambda 和 S3 返回 403', 'Lambda function URL and S3 called directly return 403'), PASS],
-    [say('源码中的私密信息', 'Secrets in source'), say('扫描：无账号、租户 ID 或密钥', 'Scanned: no account or tenant IDs, no secrets'), PASS],
+  add('h2', say('审查发现', 'Review findings'));
+  root.append(table([say('编号', 'ID'), say('严重度', 'Severity'), say('问题', 'Finding'), say('状态', 'Status')], [
+    [mono('SEC-1'), say('严重', 'Critical'), say(
+      '任何人从 /auth/login 拿到的临时登录 Cookie 与会话用同一密钥签名，且会话检查不看类型；改名为会话 Cookie 即获得站长权限（已线上复现）。修复：两种令牌用不同密钥派生并带 typ 字段，会话必须是 typ=session 且有用户名；加了回归测试。日志中没有被利用的迹象（所有修改都来自站长或测试账号），但只读的链接列表不记日志，无法完全排除。',
+      'The temporary sign-in cookie anyone gets from /auth/login was signed with the same key as the session, and the session check ignored the token type, so renaming it to the session cookie gave owner access (reproduced live). Fix: separate derived keys and a typ claim; a session must be typ=session with a user; regression tests added. Logs show no exploitation (every change came from the owner or the test account), but the read-only link list is not logged, so a read cannot be ruled out.',
+    ), FIXED('fba7bcb')],
+    [mono('SEC-2'), say('中', 'Medium'), say(
+      '匿名的 /auth/* 和 /api/* 请求会运行 API Lambda，而它没有并发上限，可耗尽账号里其他网站共用的并发并推高费用。修复：保留并发 10。',
+      'Anonymous /auth/* and /api/* requests run the API Lambda, which had no concurrency cap, so a flood could starve the other sites sharing the account and run up the bill. Fix: reserved concurrency of 10.',
+    ), FIXED('71565f8')],
+    [mono('SEC-3'), say('低', 'Low'), say(
+      'Lambda@Edge 的区域日志组和 CDK 辅助函数的日志组永不过期（只含 ID、状态和错误信息）。设置保留期会删除旧日志，需站长同意。',
+      'The Lambda@Edge regional log groups and the CDK helper log groups never expire (they hold only IDs, statuses and errors). Setting retention deletes old logs, so it needs the owner’s OK.',
+    ), DECIDE],
+    [mono('SEC-4'), say('低', 'Low'), say(
+      '没有 WAF 或限流；拿到有效链接的人反复下载大文件，流量费没有上限（见下方“费用攻击”）。WAF 每月约 $6 起。',
+      'No WAF or rate limit; someone with a valid link who downloads a large file over and over has no cap on transfer cost (see “Denial of wallet” below). WAF starts at about $6 a month.',
+    ), DECIDE],
+    [mono('SEC-5'), say('低', 'Low'), say(
+      '站长判断只看 Microsoft 账号是否为本租户的 @dliu.com，没有对象 ID 白名单；租户里的任何账号都能管理链接。',
+      'The owner check only requires an @dliu.com account in this tenant, with no object-ID allow-list; any account in the tenant could manage links.',
+    ), DECIDE],
+    [mono('SEC-6'), say('低', 'Low'), say(
+      '会话 12 小时有效，无法在服务器端撤销；退出只清除 Cookie。GET /auth/logout 可被跨站触发（只会让站长退出）。',
+      'A session lasts 12 hours and cannot be revoked server-side; signing out only clears cookies. GET /auth/logout can be triggered cross-site (it can only sign the owner out).',
+    ), ACCEPTED],
+    [mono('SEC-7'), say('低', 'Low'), say(
+      'IAM 通配符：CDK 内部的证书和部署辅助函数（acm:*、cloudfront:CreateInvalidation 作用于 *）；API 的 kms:Decrypt 作用于 *，但限定只能经 eu-west-1 的 SSM 调用；ssm:GetParameters 只限 /share/*。',
+      'IAM wildcards: CDK’s own certificate and deployment helpers (acm:*, cloudfront:CreateInvalidation on *); the API’s kms:Decrypt on * is limited to calls through SSM in eu-west-1; ssm:GetParameters is limited to /share/*.',
+    ), ACCEPTED],
+    [mono('SEC-8'), say('低', 'Low'), say(
+      'Lambda@Edge 在 us-east-1 以外的区域并发配额为 10：它限制了费用，但流量大时可能出现 503。免费提高配额是站长的决定。',
+      'Lambda@Edge concurrency is 10 per region outside us-east-1: it caps cost, but heavy traffic could see 503s. Raising the quota is free and the owner’s call.',
+    ), DECIDE],
+    [mono('SEC-9'), say('信息', 'Info'), say(
+      '删除链接约 1 分钟后才到达所有 CloudFront 主机（实测 44–60 秒）；过期由时间判断，立即生效。',
+      'A deleted link takes about a minute to reach every CloudFront host (44–60 s measured); expiry is checked by time and is immediate.',
+    ), ACCEPTED],
+    [mono('SEC-10'), say('信息', 'Info'), say(
+      'npm audit：运行时依赖 0 个；构建和测试依赖中 2 个（生产）/ 22 个（全部）中低风险，都在 aws-cdk-lib 和 jest 的 minimatch、glob 链中，不进入 Lambda 包。',
+      'npm audit: 0 in runtime code; 2 (prod) / 22 (all) low and moderate in build and test tools, all in the minimatch and glob chains of aws-cdk-lib and jest, none in the Lambda bundles.',
+    ), ACCEPTED],
   ]));
 
   add('h2', say('威胁模型', 'Threat model'));
+  add('h3', say('资产', 'Assets'));
+  root.append(table([say('资产', 'Asset'), say('在哪里', 'Where'), say('泄漏的后果', 'Impact if exposed')], [
+    [say('OneDrive“任何人”链接', 'OneDrive “Anyone” links'), say('KeyValueStore；CloudFront 内部请求头', 'KeyValueStore; internal CloudFront headers'), say('可直接从 OneDrive 打开分享的内容（仍只限分享的项）', 'The shared items open directly from OneDrive (still only those items)')],
+    [say('分享的文件', 'Shared files'), say('OneDrive；CloudFront 缓存 1 天', 'OneDrive; CloudFront cache for 1 day'), say('有短链接的人本来就能看', 'Already visible to anyone with the short link')],
+    [say('站长会话', 'Owner session'), say('浏览器中的 __Host- HttpOnly Cookie', '__Host- HttpOnly cookie in the browser'), say('可读取全部 OneDrive 链接、新建和删除短链接', 'Read every OneDrive link; create and delete short links')],
+    [say('Entra 客户端密钥', 'Entra client secret'), say('SSM SecureString /share/*', 'SSM SecureString /share/*'), say('可伪造会话（密钥同时用于派生会话签名密钥）', 'Could forge sessions (session keys are derived from it)')],
+    [say('AWS 账单', 'The AWS bill'), say('与其他 dliu.com 网站同一账号', 'Same account as the other dliu.com sites'), say('费用攻击', 'Denial of wallet')],
+  ]));
+  add('h3', say('攻击者', 'Actors'));
+  root.append(list([
+    say('匿名访客：没有链接，只能看到首页、文档和 404。', 'Anonymous visitor: no link; sees the home page, docs and 404s.'),
+    say('有链接的朋友，或拿到转发链接的人：只能看到这一个链接分享的内容。', 'A friend with a link, or anyone it was forwarded to: sees only what that one link shares.'),
+    say('非站长的 Microsoft 账号：其他租户被拒绝；本租户的其他 @dliu.com 账号会被当作站长（SEC-5）。', 'A signed-in non-owner: other tenants are refused; another @dliu.com account in this tenant counts as the owner (SEC-5).'),
+    say('偷到 Cookie 的人：最多 12 小时站长权限（SEC-6）；__Host-、HttpOnly、CSP 无内联脚本降低被偷的可能。', 'Someone with a stolen cookie: owner access for up to 12 hours (SEC-6); __Host-, HttpOnly and a CSP with no inline script make theft hard.'),
+    say('被入侵的依赖：运行时只有 Node.js 自带模块和 AWS SDK；浏览器只运行本站脚本和 PDF.js（禁用 eval）。', 'A compromised dependency: runtime code uses only Node.js built-ins and the AWS SDK; the browser runs only this site’s scripts and PDF.js (eval disabled).'),
+  ]));
+
+  add('h3', say('STRIDE（按组件）', 'STRIDE per component'));
+  root.append(table([say('组件', 'Component'), say('主要威胁', 'Main threats'), say('防护', 'Controls')], [
+    [say('CloudFront 函数 + KeyValueStore', 'CloudFront Function + KeyValueStore'), say('仿冒（伪造 x-share-*）、信息泄漏（猜 ID）、提权（过期链接）', 'Spoofing (forged x-share-*), information disclosure (guessing IDs), elevation (expired links)'), say('删除访问者的 x-share-*；ID 必须是 10 位字母数字；在缓存前检查存在和过期；只有 API 能写 KVS', 'Strips visitor x-share-*; IDs must be 10 alphanumerics; existence and expiry checked before the cache; only the API can write the KVS')],
+    [mono('Lambda@Edge FileProxy'), say('篡改（路径穿越、SSRF）、信息泄漏（SharePoint Cookie/头）、拒绝服务', 'Tampering (traversal, SSRF), information disclosure (SharePoint cookies and headers), denial of service'), say('路径逐段检查；只连链接自己的 SharePoint 主机且只跟随同主机跳转；响应头白名单；HTML/SVG 作为附件；没有 AWS 权限；每区域并发 10', 'Path checked segment by segment; talks only to the link’s own SharePoint host and same-host redirects; response header allow-list; HTML/SVG as attachments; no AWS permissions; 10 concurrent per region')],
+    [mono('API Lambda'), say('仿冒（会话伪造、令牌混用 SEC-1）、篡改（CSRF、注入）、拒绝服务（SEC-2）', 'Spoofing (forged sessions, token confusion SEC-1), tampering (CSRF, injection), denial of service (SEC-2)'), say('HMAC 会话带 typ、常量时间比较；POST 需会话 + 本站 Origin + JSON；输入校验（链接主机、ID、过期时间、10 KB 上限）；函数地址只接受 CloudFront 签名；并发 10', 'HMAC session with typ, constant-time compare; POST needs a session, this site’s Origin and JSON; input validation (link host, id, expiry, 10 KB limit); function URL accepts only CloudFront-signed calls; concurrency 10')],
+    [say('Microsoft 登录', 'Microsoft sign-in'), say('仿冒（伪造回调、重放、开放重定向）', 'Spoofing (forged callback, replay, open redirect)'), say('PKCE S256、state、nonce；检查签发者、租户、受众；返回地址只能是本站相对路径', 'PKCE S256, state, nonce; issuer, tenant and audience checked; return path must be relative to this site')],
+    [say('S3 网站存储桶', 'S3 site bucket'), say('信息泄漏、篡改', 'Information disclosure, tampering'), say('全部禁止公开、只能经 CloudFront（OAC）读取、SSE-S3、只限 HTTPS', 'Block all public access, readable only through CloudFront (OAC), SSE-S3, HTTPS only')],
+    [say('SSM + KMS', 'SSM + KMS'), say('信息泄漏（密钥）', 'Information disclosure (secret)'), say('SecureString；只有 API 角色可读 /share/*；不写入日志或代码', 'SecureString; only the API role reads /share/*; never in logs or code')],
+    [say('浏览器页面', 'Browser pages'), say('XSS、点击劫持、Referer 泄漏', 'XSS, clickjacking, Referer leaks'), say('只用 textContent 生成内容；CSP 只允许本站脚本；frame-ancestors self；no-referrer', 'Content built with textContent only; CSP allows only this site’s scripts; frame-ancestors self; no-referrer')],
+    [say('日志', 'Logs'), say('抵赖、信息泄漏', 'Repudiation, information disclosure'), say('每次修改链接都记录站长和 ID；日志不含 OneDrive 链接、Cookie 或文件内容；没有 CloudFront 访问日志', 'Every link change logs the owner and id; logs hold no OneDrive links, cookies or file contents; no CloudFront access logs')],
+  ]));
+
+  add('h3', say('费用攻击（每小时最坏情况）', 'Denial of wallet (worst case per hour)'));
+  root.append(table([say('路径', 'Path'), say('最坏情况', 'Worst case'), say('上限', 'Cap')], [
+    [say('没有链接：/auth/*、/api/*', 'No link: /auth/*, /api/*'), num('≈ $0.20 / h'), say('API 并发 10（SEC-2）', 'API concurrency 10 (SEC-2)')],
+    [say('没有链接：其他地址', 'No link: anything else'), num(say('≈ $1 / 100 万次请求', '≈ $1 per million requests')), say('CloudFront 函数直接返回 404；请求费没有上限', 'The CloudFront Function answers 404; request fees have no cap')],
+    [say('有链接：未缓存的随机文件路径', 'With a link: uncached random file paths'), num(say('≈ $1.1 / h / 区域，约 $15 / h', '≈ $1.1 / h per region, ~$15 / h')), say('Lambda@Edge 每区域并发 10', 'Lambda@Edge concurrency 10 per region')],
+    [say('有链接：反复下载大文件', 'With a link: repeated large downloads'), num('10 Gbps 时 ≈ $380–540 / h'), say('没有（SEC-4）；先用掉每月免费 1 TB', 'None (SEC-4); the free 1 TB a month goes first')],
+  ]));
+
+  add('h3', say('场景', 'Scenarios'));
   root.append(table([say('场景', 'Scenario'), say('剩余风险', 'Residual risk'), say('防护', 'Controls')], [
-    [say('有人猜中链接', 'Someone guesses a link'), LOW, say('8×10¹⁷ 种可能，用加密随机数生成', '8×10¹⁷ possibilities from a cryptographic random source')],
+    [say('有人猜中链接', 'Someone guesses a link'), LOW, say('8×10¹⁷ 种可能，用加密随机数生成；不存在和格式错误一律 404', '8×10¹⁷ possibilities from a cryptographic random source; unknown and malformed IDs all return 404')],
     [say('链接被搜索引擎收录', 'A link is indexed by search engines'), LOW, say('noindex、nofollow；robots.txt 禁止抓取', 'noindex, nofollow; robots.txt disallows crawling')],
     [say('链接通过 Referer 泄漏', 'A link leaks through Referer'), LOW, say('Referrer-Policy: no-referrer', 'Referrer-Policy: no-referrer')],
     [say('访问者拿到 OneDrive 链接', 'A visitor obtains the OneDrive link'), LOW, say('只存在 KeyValueStore 和 CloudFront 内部请求头里', 'Only in the KeyValueStore and internal CloudFront headers')],
     [say('文件里的脚本攻击本站', 'A shared file runs script on this site'), LOW, say('只有图片、视频、音频、PDF、纯文本在线显示；其余下载；nosniff；CSP', 'Only images, video, audio, PDF and plain text show inline; others download; nosniff; CSP')],
-    [say('别人创建或删除链接', 'Someone else creates or deletes links'), LOW, say('Microsoft 登录（单租户、@dliu.com）+ HMAC 签名会话 + Origin 检查', 'Microsoft sign-in (single tenant, @dliu.com) + HMAC-signed session + Origin check')],
-    [say('会话 Cookie 被盗或伪造', 'Session cookie stolen or forged'), LOW, say('__Host-、HttpOnly、Secure、SameSite=Lax，12 小时过期，常量时间比较', '__Host-, HttpOnly, Secure, SameSite=Lax, 12-hour expiry, constant-time compare')],
+    [say('别人创建或删除链接', 'Someone else creates or deletes links'), LOW, say('Microsoft 登录（单租户、@dliu.com）+ 带类型的 HMAC 会话 + Origin 检查', 'Microsoft sign-in (single tenant, @dliu.com) + typed HMAC session + Origin check')],
+    [say('会话 Cookie 被盗或伪造', 'Session cookie stolen or forged'), LOW, say('__Host-、HttpOnly、Secure、SameSite=Lax，12 小时过期；登录 Cookie 不能当会话用', '__Host-, HttpOnly, Secure, SameSite=Lax, 12-hour expiry; the sign-in cookie cannot be used as a session')],
     [say('登录被劫持', 'Sign-in is hijacked'), LOW, say('PKCE（S256）、state、nonce；检查签发者、租户和受众', 'PKCE (S256), state, nonce; issuer, tenant and audience checked')],
     [say('AWS 账号被入侵', 'The AWS account is compromised'), MEDIUM, say('可读到 OneDrive 链接，但只能访问分享的那些项；启用 MFA', 'Exposes the OneDrive links, still limited to the shared items; MFA on')],
-    [say('大量请求刷流量', 'Request floods run up the bill'), MEDIUM, say('边缘缓存吸收重复下载；没有 WAF 或限流', 'Edge cache absorbs repeats; no WAF or rate limit')],
+    [say('大量请求刷流量', 'Request floods run up the bill'), MEDIUM, say('边缘缓存吸收重复下载；函数有并发上限；没有 WAF 或限流', 'Edge cache absorbs repeats; functions have concurrency caps; no WAF or rate limit')],
+  ]));
+
+  add('h2', say('线上渗透测试', 'Live penetration test'));
+  add('p', say(
+    `${REVIEWED}在 share.dliu.com 线上运行 scripts/pentest.js，233 项全部通过。可重跑：make pentest（匿名）和 make pentest-owner（需要 AWS 凭证；会签发 10 分钟站长会话、建两个临时链接并删除）。`,
+    `scripts/pentest.js was run against the live share.dliu.com on ${REVIEWED}; all 233 tests passed. Rerun with make pentest (anonymous) and make pentest-owner (needs AWS credentials; signs a 10-minute owner session, makes two throwaway links and deletes them).`,
+  ));
+  root.append(table([say('测试', 'Test'), say('预期', 'Expected'), say('实际', 'Actual'), say('状态', 'Status')], [
+    [say('未登录访问每个 API 路由和方法（22 项）', 'Every API route and method without a session (22)'), '401 / 403', '401 / 403', PASS],
+    [say('伪造会话：随机 HMAC、空签名、alg=none、乱码；把登录 Cookie 当会话（SEC-1）', 'Forged sessions: random HMAC, empty signature, alg=none, garbage; sign-in cookie replayed as the session (SEC-1)'), '401', '401', PASS],
+    [say('登录：PKCE、state、nonce、redirect_uri、错误 state、伪造 code、开放重定向（13 项）', 'Sign-in: PKCE, state, nonce, redirect_uri, wrong state, forged code, open redirects (13)'), say('拒绝，只跳回本站', 'Refused; redirects stay on this site'), say('同预期', 'As expected'), PASS],
+    [say('猜测和畸形链接 ID，伪造 x-share-*（23 项）', 'Guessed and malformed link IDs, forged x-share-* (23)'), say('404（或 CloudFront 400）', '404 (or CloudFront 400)'), say('同预期', 'As expected'), PASS],
+    [say('路径穿越：/f/<id>/..、%2e%2e、%5c、%00、//、超长 UTF-8；列表 API 的 path 参数（20 项）', 'Traversal: /f/<id>/.., %2e%2e, %5c, %00, //, overlong UTF-8; the listing API path parameter (20)'), '404 / 400', '404 / 400', PASS],
+    [say('列表和文件响应不含 OneDrive 链接、SharePoint Cookie 或响应头', 'Listings and file responses carry no OneDrive links, SharePoint cookies or headers'), say('无', 'None'), say('无', 'None'), PASS],
+    [say('删除链接后：页面、已缓存文件、列表 API', 'After deleting a link: page, cached file, listing API'), '404', say('404（44 秒内到达所有主机）', '404 (all hosts within 44 s)'), PASS],
+    [say('过期后：页面、已缓存文件、列表 API', 'After expiry: page, cached file, listing API'), '404', '404', PASS],
+    [say('CSRF：其他 Origin、没有 Origin、表单类型', 'CSRF: other Origin, no Origin, form content type'), '403', '403', PASS],
+    [say('注入：错误 JSON、20 KB 正文、SSRF 链接、NoSQL 对象、../ ID、过去的过期时间', 'Injection: bad JSON, 20 KB body, SSRF links, NoSQL objects, ../ ids, past expiry'), '400 / 413', '400', PASS],
+    [say('XSS：404 页面不回显地址；HTML/SVG 作为附件', 'XSS: 404 page reflects nothing; HTML/SVG as attachments'), say('不回显', 'Not reflected'), say('不回显', 'Not reflected'), PASS],
+    [say('CRLF 头注入', 'CRLF header injection'), say('不注入', 'No injection'), say('不注入', 'No injection'), PASS],
+    [say('缓存欺骗和投毒：/api/me/x.css、X-Forwarded-Host、多余查询参数', 'Cache deception and poisoning: /api/me/x.css, X-Forwarded-Host, extra query strings'), say('不缓存私有内容', 'Nothing private cached'), say('同预期', 'As expected'), PASS],
+    [say('CORS', 'CORS'), say('不发送 CORS 头', 'No CORS headers'), say('无', 'None'), PASS],
+    [say('绕过 CloudFront：Lambda 函数地址（含伪造头）、S3、*.cloudfront.net', 'Bypassing CloudFront: Lambda function URL (with forged headers), S3, *.cloudfront.net'), say('403；同样的检查', '403; same checks'), say('同预期', 'As expected'), PASS],
+    [say('隐藏文件：.git、.env、source map、package.json、目录列表（14 项）', 'Hidden files: .git, .env, source maps, package.json, directory listings (14)'), '404 / 403', '404 / 403', PASS],
+    [say('错误信息', 'Error messages'), say('无堆栈或 AWS 细节', 'No stack traces or AWS details'), say('无', 'None'), PASS],
+    [say('TLS 1.0、1.1；HTTP', 'TLS 1.0, 1.1; HTTP'), say('拒绝；301 到 HTTPS', 'Refused; 301 to HTTPS'), say('同预期', 'As expected'), PASS],
+    [say('6 类页面的安全响应头', 'Security headers on 6 kinds of page'), say('CSP、HSTS、nosniff、no-referrer、noindex', 'CSP, HSTS, nosniff, no-referrer, noindex'), say('全部存在', 'All present'), PASS],
+  ]));
+
+  add('h2', say('代码审查', 'Code review'));
+  root.append(list([
+    say('逐个阅读：API（路由、登录、链接、存储、配置）、Lambda@Edge（入口、SharePoint、MIME）、CloudFront 函数和浏览器脚本。浏览器脚本不用 innerHTML。', 'Read in full: the API (router, sign-in, links, store, config), Lambda@Edge (entry, SharePoint, MIME), the CloudFront Function and the browser scripts. The browser scripts never use innerHTML.'),
+    say('每个路由都检查授权；输入校验链接主机、ID 格式、过期时间和正文大小；错误只返回通用信息。', 'Every route checks authorisation; input validation covers link host, ID format, expiry and body size; errors return only generic messages.'),
+    say('密钥：gitleaks 8.30.1 扫描全部 git 历史，0 处泄漏；代码和日志中没有密钥、账号 ID 或租户 ID。', 'Secrets: gitleaks 8.30.1 over the full git history found 0 leaks; no secrets, account IDs or tenant IDs in code or logs.'),
+    say('依赖：见 SEC-10。', 'Dependencies: see SEC-10.'),
+    say('AWS：存储桶禁止公开访问、SSE-S3、只限 HTTPS、OAC；API 日志保留 30 天（边缘日志见 SEC-3）；IAM 见 SEC-7。', 'AWS: bucket blocks public access, SSE-S3, HTTPS only, OAC; API logs kept 30 days (edge logs: SEC-3); IAM: SEC-7.'),
+    say('测试：60 个 Jest 测试，包括 SEC-1 的回归测试（登录 Cookie 不能当会话、会话不能当登录 Cookie、伪造/篡改/无类型/过期令牌被拒）和 SEC-2 的并发上限。', 'Tests: 60 Jest tests, including SEC-1 regressions (sign-in cookie refused as a session, session refused as the sign-in cookie, forged, tampered, untyped and expired tokens refused) and the SEC-2 concurrency cap.'),
   ]));
 
   add('h2', say('接受的剩余风险', 'Accepted residual risks'));
   root.append(list([
     say('链接可被转发：任何拿到链接的人都能打开，和 OneDrive“任何人”链接一样。', 'Links can be forwarded: anyone who has one can open it, just like an OneDrive “Anyone” link.'),
     say('聊天软件可能会抓取链接预览。', 'Chat apps may fetch a link to build a preview.'),
-    say('在 OneDrive 停止分享后，已缓存的文件最多还能从边缘拿到 1 天；在本站删除链接则立即失效。', 'After stopping sharing in OneDrive, cached files can stay reachable at the edge for up to 1 day; deleting the link here stops it at once.'),
+    say('在 OneDrive 停止分享后，已缓存的文件最多还能从边缘拿到 1 天；在本站删除链接约 1 分钟内失效（SEC-9）。', 'After stopping sharing in OneDrive, cached files can stay reachable at the edge for up to 1 day; deleting the link here stops it within about a minute (SEC-9).'),
     say('使用了 SharePoint 未公开的接口，微软更改后可能需要修复。', 'Undocumented SharePoint endpoints are used; a Microsoft change may need a fix.'),
-    say('没有 WAF 或限流。', 'No WAF or rate limit.'),
+    say('没有 WAF 或限流（SEC-4）；会话不能在服务器端撤销（SEC-6）。', 'No WAF or rate limit (SEC-4); sessions cannot be revoked server-side (SEC-6).'),
   ]));
 
   root.append(more(say('每个页面的响应头', 'Response headers on every page'),

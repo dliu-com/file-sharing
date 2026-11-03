@@ -92,7 +92,7 @@ For a file share, `<path>` is the file name. For a folder share, it is the path 
    - sets the content type from the file name;
    - sets `Content-Disposition` to `inline` for images, video, audio, PDF and plain text, and to `attachment` for everything else and for `?dl=1`;
    - sets `Cache-Control` (browsers 1 hour, CloudFront 1 day).
-5. **Viewer response.** The shared traffic-monitor `dliu-visitor-id` function logs views and downloads, as on files.dliu.com.
+5. **Viewer response.** The shared traffic-monitor `dliu-visitor-id` function sets the `dl_vid` visitor cookie, as on files.dliu.com. No CloudFront access logs are collected for this site, so traffic.dliu.com does not count it. If logging is ever added, leave out `cs(Cookie)` (it would record the owner's `__Host-share_session` cookie).
 
 ### Folder listings
 
@@ -118,6 +118,21 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 - These headers are set on every response: a CSP that allows scripts only from `/_app/` (styles and images also from the shared UI on `files.dliu.com/dliu.com/`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` (keeps link ids from leaking to other sites), HSTS, and `X-Robots-Tag: noindex`. A shared HTML or SVG file is therefore downloaded rather than shown, and can't run code on the site.
 - Links are bearer tokens: anyone who has a link can use it. Expiry and deleting here are conveniences; the OneDrive link's own settings are the real control (see Trust model).
 - Owner API `POST` requests need the session cookie (`SameSite=Lax`, `__Host-`) and a matching `Origin` header.
+- The owner session and the transient sign-in cookie (state, nonce, PKCE verifier) are HMAC-signed with **different keys** derived from the Entra client secret, and each carries a `typ` claim; `getSession` accepts only `typ: "session"` with a user. Before this (SEC-1, fixed in `fba7bcb`) the sign-in cookie, which anyone can get from `/auth/login`, could be replayed as an owner session.
+- The API Lambda has reserved concurrency 10 (SEC-2, `71565f8`), so anonymous `/auth/*` and `/api/*` floods can't starve the other sites' Lambdas or run up a large bill. Lambda@Edge is capped by the account's regional concurrency (10 outside us-east-1).
+
+**Security review, 2026-11-03.** Threat model (assets, actors, STRIDE per component, denial of wallet), findings SEC-1 to SEC-10, the live test table and residual risks are on [/docs#security](https://share.dliu.com/docs#security). To repeat it:
+
+| Check | Command | Result on 2026-11-03 |
+|---|---|---|
+| Live black-box tests | `make pentest` | 93 / 93 pass |
+| Live owner tests | `make pentest-owner` | 140 / 140 pass |
+| Secrets in git history | `gitleaks git --log-opts=--all .` | no leaks |
+| Runtime dependencies | `npm audit --omit=dev` | 2 moderate, build-time only (minimatch via aws-cdk-lib) |
+| All dependencies | `npm audit` | 22 low/moderate in the jest and aws-cdk-lib tool chains; none in the Lambda bundles |
+| Unit tests | `make test` | 60 pass, including SEC-1 and SEC-2 regressions |
+
+Open owner decisions: log retention for the Lambda@Edge and CDK helper log groups (SEC-3), WAF or rate limiting (SEC-4), an object-ID allow-list or Entra user assignment for the owner (SEC-5), and raising the Lambda@Edge regional concurrency (SEC-8).
 
 ### China reachability
 
