@@ -75,7 +75,13 @@ function createStore({ arn, client } = {}) {
     }
   }
 
-  return { get, list, put, remove };
+  // The store's status (READY when usable), for /health. Reads no keys.
+  async function describe() {
+    const { Status } = await send('DescribeKeyValueStoreCommand', {});
+    return Status;
+  }
+
+  return { get, list, put, remove, describe };
 }
 
 module.exports = { createStore, TooLarge, MAX_VALUE_BYTES };

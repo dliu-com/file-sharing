@@ -23,12 +23,13 @@ test('one KeyValueStore, used by the viewer function', () => {
 });
 
 test('behaviours', () => {
-  expect(config().CacheBehaviors.map((b: any) => b.PathPattern).sort()).toEqual(['_app/*', 'api/*', 'auth/*', 'f/*', 's/*']);
-  // Every behaviour except _app/* checks links with the viewer function.
+  expect(config().CacheBehaviors.map((b: any) => b.PathPattern).sort()).toEqual(['_app/*', 'api/*', 'auth/*', 'f/*', 'health', 's/*']);
+  // Every behaviour except _app/* and health checks links with the viewer function.
   const viewerRequest = (b: any) => (b.FunctionAssociations || []).some((f: any) => f.EventType === 'viewer-request');
   expect(viewerRequest(config().DefaultCacheBehavior)).toBe(true);
   for (const pattern of ['s/*', 'f/*', 'api/*', 'auth/*']) expect(viewerRequest(behavior(pattern))).toBe(true);
   expect(viewerRequest(behavior('_app/*'))).toBe(false);
+  expect(viewerRequest(behavior('health'))).toBe(false);
 
   const files = behavior('f/*');
   expect(files.LambdaFunctionAssociations.map((l: any) => l.EventType).sort()).toEqual(['origin-request', 'origin-response']);
@@ -37,6 +38,35 @@ test('behaviours', () => {
   expect(behavior('api/*').AllowedMethods).toContain('POST');
   expect(behavior('auth/*').AllowedMethods).toEqual(['GET', 'HEAD']);
   expect(config().PriceClass).toBe('PriceClass_All');
+});
+
+test('/health goes to the API, cached 60 s keyed on nothing, and forwards nothing from the viewer', () => {
+  const health = behavior('health');
+  expect(health.TargetOriginId).toBe(behavior('api/*').TargetOriginId);
+  expect(health.AllowedMethods).toEqual(['GET', 'HEAD']);
+  expect(health.OriginRequestPolicyId).toBeUndefined();
+  expect(health.FunctionAssociations).toBeUndefined();
+  expect(health.LambdaFunctionAssociations).toBeUndefined();
+  const policies = template.findResources('AWS::CloudFront::CachePolicy');
+  const id = health.CachePolicyId.Ref;
+  const policy = policies[id].Properties.CachePolicyConfig;
+  expect(policy).toMatchObject({ MinTTL: 0, DefaultTTL: 60, MaxTTL: 60 });
+  expect(policy.ParametersInCacheKeyAndForwardedToOrigin).toMatchObject({
+    HeadersConfig: { HeaderBehavior: 'none' },
+    CookiesConfig: { CookieBehavior: 'none' },
+    QueryStringsConfig: { QueryStringBehavior: 'none' },
+  });
+});
+
+test('health.md is deployed as text/markdown, and no other deployment uploads it', () => {
+  const deployments = Object.values(template.findResources('Custom::CDKBucketDeployment')).map((d: any) => d.Properties);
+  const markdown = deployments.filter((d: any) => (d.Include || []).includes('health.md'));
+  expect(markdown).toHaveLength(1);
+  expect(markdown[0].Exclude).toEqual(['*']);
+  expect(markdown[0].SystemMetadata['content-type']).toBe('text/markdown; charset=utf-8');
+  for (const d of deployments.filter((x: any) => x !== markdown[0] && x.DestinationBucketKeyPrefix === '_app/')) {
+    expect(d.Exclude).toEqual(expect.arrayContaining([expect.stringMatching(/^(\*|health\.md)$/)]));
+  }
 });
 
 test('file cache key is the URL plus ?dl, and only the edge function gets the share link', () => {

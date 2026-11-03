@@ -4,6 +4,7 @@ const auth = require('./auth');
 const { loadConfig, NotConfigured } = require('./config');
 const { BadRequest, NotFound, createShares } = require('./shares');
 const { createSharePoint, ShareError } = require('../edge/sharepoint');
+const { createHealth, checkLinks, checkSignin } = require('./health');
 
 const SECURITY_HEADERS = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 const MAX_BODY = 16 * 1024;
@@ -87,6 +88,10 @@ function createHandler(deps = {}) {
   const sharepoint = deps.sharepoint || createSharePoint();
   let store = deps.store;
   const getStore = () => store || (store = require('./store').createStore({ arn: process.env.KVS_ARN }));
+  const health = createHealth({
+    checks: { links: () => checkLinks(getStore()), signin: () => checkSignin(getConfig) },
+    now: clock,
+  });
 
   // Visitors: what a share link shows. The viewer function has checked the link (exists, not expired) and passed
   // the OneDrive link in x-share-src. Only CloudFront can call this function, so the headers can be trusted.
@@ -112,6 +117,9 @@ function createHandler(deps = {}) {
   return async function handler(event) {
     const method = (event.requestContext && event.requestContext.http && event.requestContext.http.method) || 'GET';
     const path = event.rawPath || '/';
+    // status.dliu.com's guest check: decided on the method and path alone, before anything else is read.
+    if (path === '/health') return method === 'GET' || method === 'HEAD' ? health() : json(405, { error: 'Method not allowed' });
+
     const params = event.queryStringParameters || {};
     const siteUrl = process.env.SITE_URL;
 

@@ -38,6 +38,8 @@ const STRINGS = {
     architecture: 'Technical architecture',
     cost: 'Cost',
     security: 'Security',
+    health: 'Health',
+    healthTitle: 'Health · Docs',
   },
   zh: {
     loading: '加载中…',
@@ -74,6 +76,8 @@ const STRINGS = {
     architecture: '技术架构',
     cost: '费用',
     security: '安全',
+    health: '健康检查',
+    healthTitle: '健康检查 · 文档',
   },
 };
 
@@ -112,7 +116,7 @@ function docsButton() {
   link.href = '/docs';
   link.title = t('docsTitle');
   link.textContent = t('docs');
-  if (/^\/docs\/?$/.test(location.pathname)) link.setAttribute('aria-current', 'page');
+  if (/^\/docs(\/|$)/.test(location.pathname)) link.setAttribute('aria-current', 'page');
   return link;
 }
 

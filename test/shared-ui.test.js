@@ -8,7 +8,7 @@ const APP_CSS = '<link rel="stylesheet" href="/_app/style.css">';
 // DL Share's own logo is in the header and favicon; the shared DL icon leads the footer.
 const LOGO = '/_app/logo.svg';
 const DL_ICON = 'https://files.dliu.com/dliu.com/favicon.png';
-const PAGES = ['index', 'admin', 'view', 'docs'];
+const PAGES = ['index', 'admin', 'view', 'docs', 'health'];
 
 // The link-not-found page that the CloudFront Function returns, as plain HTML.
 function notFoundPage() {
@@ -51,6 +51,7 @@ test('the docs page loads the shared docs stylesheet and tabs, and the app has n
   expect(page).toContain('<nav class="dl-tabs" aria-label="Docs sections">');
   expect(page).toContain('<article id="architecture" class="dl-docs">');
   for (const tab of ['architecture', 'cost', 'security']) expect(page).toContain(`<a href="#${tab}" data-tab="${tab}"`);
+  expect(page).toContain('<a href="/docs/health" data-i18n="health">Health</a>');
   expect(page).not.toContain('/_app/docs.css');
   expect(fs.existsSync(path.join(__dirname, '..', 'web/docs.css'))).toBe(false);
 });

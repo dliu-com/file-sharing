@@ -238,14 +238,36 @@ export class FileSharingStack extends Stack {
       ],
     };
 
+    const apiOrigin = origins.FunctionUrlOrigin.withOriginAccessControl(functionUrl, { readTimeout: Duration.seconds(30) });
     const apiBehavior: cloudfront.BehaviorOptions = {
-      origin: origins.FunctionUrlOrigin.withOriginAccessControl(functionUrl, { readTimeout: Duration.seconds(30) }),
+      origin: apiOrigin,
       allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
       viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
       originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
       responseHeadersPolicy: headers,
       functionAssociations: [viewerRequest],
+    };
+
+    // GET /health for status.dliu.com: keyed on nothing and cached 60 s, so the API runs at most about once a minute.
+    // No origin request policy, so no cookies, headers or query string reach the API; no viewer function either.
+    const healthCache = new cloudfront.CachePolicy(this, 'HealthCache', {
+      comment: 'share.dliu.com /health: 60 s, keyed on nothing',
+      minTtl: Duration.seconds(0),
+      defaultTtl: Duration.seconds(60),
+      maxTtl: Duration.seconds(60),
+      headerBehavior: cloudfront.CacheHeaderBehavior.none(),
+      cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.none(),
+      enableAcceptEncodingGzip: false,
+      enableAcceptEncodingBrotli: false,
+    });
+    const healthBehavior: cloudfront.BehaviorOptions = {
+      origin: apiOrigin,
+      allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      cachePolicy: healthCache,
+      responseHeadersPolicy: headers,
     };
 
     const distribution = new cloudfront.Distribution(this, 'FileSharingDistribution', {
@@ -257,6 +279,7 @@ export class FileSharingStack extends Stack {
         'f/*': fileBehavior,
         'api/*': { ...apiBehavior, allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL },
         'auth/*': apiBehavior,
+        'health': healthBehavior,
       },
       domainNames: [domainName],
       certificate,
@@ -266,8 +289,8 @@ export class FileSharingStack extends Stack {
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
     });
 
-    // Site files go to S3 _app/ in three groups, each with its own Cache-Control. Each sync excludes the other
-    // groups' files, so its prune never deletes them.
+    // Site files go to S3 _app/ in four groups, each with its own Cache-Control or Content-Type. Each sync excludes
+    // the other groups' files, so its prune never deletes them.
     const webDir = path.join(ROOT, 'web');
     // HTML shells: browsers and CloudFront revalidate on every load, so a deploy shows up at once.
     new s3deploy.BucketDeployment(this, 'SiteContent', {
@@ -284,10 +307,22 @@ export class FileSharingStack extends Stack {
       sources: [s3deploy.Source.asset(webDir)],
       destinationBucket: siteBucket,
       destinationKeyPrefix: '_app/',
-      exclude: ['*.html', 'vendor/*'],
+      exclude: ['*.html', 'health.md', 'vendor/*'],
       cacheControl: [s3deploy.CacheControl.fromString('public, max-age=0, must-revalidate, s-maxage=86400')],
       distribution,
       distributionPaths: ['/_app/*'],
+    });
+    // Markdown docs (/docs/health.md, read by status.dliu.com) with an explicit text/markdown type.
+    new s3deploy.BucketDeployment(this, 'SiteDocs', {
+      sources: [s3deploy.Source.asset(webDir)],
+      destinationBucket: siteBucket,
+      destinationKeyPrefix: '_app/',
+      exclude: ['*'],
+      include: ['health.md'],
+      contentType: 'text/markdown; charset=utf-8',
+      cacheControl: [s3deploy.CacheControl.fromString('public, max-age=0, must-revalidate, s-maxage=86400')],
+      distribution,
+      distributionPaths: ['/_app/health.md'],
     });
     // Vendored PDF.js (changes only on a version bump): short browser cache, long edge cache.
     new s3deploy.BucketDeployment(this, 'SiteVendor', {

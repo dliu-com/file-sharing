@@ -5,6 +5,7 @@ import cf from 'cloudfront';
 //   /                   -> landing page            /admin -> owner page (the API checks the sign-in)
 //   /s/<id>[/<path>]    -> viewer page             /f/<id>/<path> -> file bytes (Lambda@Edge fetches from SharePoint)
 //   /api/s/<id>/info    -> public listing API      /api/*, /auth/* -> owner API and sign-in
+//   /docs, /docs/health, /docs/health.md -> docs pages (/health itself has its own behaviour, without this function)
 // For share URLs it looks the id up in the KeyValueStore and passes the OneDrive link to the origin in x-share-*
 // headers. Incoming x-share-* headers are always removed, so visitors cannot forge them.
 
@@ -96,6 +97,10 @@ async function handler(event) {
   }
   if (uri === '/docs' || uri === '/docs/') {
     request.uri = '/_app/docs.html';
+    return request;
+  }
+  if (uri === '/docs/health' || uri === '/docs/health/' || uri === '/docs/health.md') {
+    request.uri = uri === '/docs/health.md' ? '/_app/health.md' : '/_app/health.html';
     return request;
   }
   if (uri === '/robots.txt' || uri === '/favicon.ico') {
