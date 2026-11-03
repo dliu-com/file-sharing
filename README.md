@@ -53,7 +53,7 @@ flowchart LR
 | --- | --- | --- |
 | `/` | Landing page | S3 `/_app/index.html` |
 | `/admin` | Owner page | S3 `/_app/admin.html`, which calls the API |
-| `/docs` | Public docs (CN/EN): Technical architecture and Security tabs, drawn with the diagram kit shared with the other dliu.com sites (`web/diagram.js`, styled by the shared `dl-docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
+| `/docs` | Public docs (CN/EN): Technical architecture, Cost and Security tabs, drawn with the diagram kit shared with the other dliu.com sites (`web/diagram.js`, styled by the shared `dl-docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
 | `/s/<id>/[path]` | Viewer page: the share's root, a subfolder (ending in `/`) or one file's preview | S3 `/_app/view.html`, which calls `/api/s/<id>/info` |
 | `/f/<id>/<path>` | Raw file bytes, shown inline when the type is safe to show | Lambda@Edge and SharePoint, cached by CloudFront |
 | `/f/<id>/<path>?dl=1` | The same bytes with `Content-Disposition: attachment` (the Download button) | Same, cached separately |
@@ -249,7 +249,7 @@ Two other options were ruled out:
 | Lambda | Owner actions and folder listings |
 | S3 | The pages only (a few KB) |
 
-When idle, there is effectively no cost.
+When idle, there is effectively no cost. The docs page's Cost tab has the list prices and worked examples; keep both in step.
 
 ## Ideas for later
 

@@ -36,6 +36,7 @@ const STRINGS = {
     docs: 'Docs',
     docsTitle: 'How DL Share works and how it keeps files safe',
     architecture: 'Technical architecture',
+    cost: 'Cost',
     security: 'Security',
   },
   zh: {
@@ -71,6 +72,7 @@ const STRINGS = {
     docs: '文档',
     docsTitle: 'DL Share 的工作原理与安全',
     architecture: '技术架构',
+    cost: '费用',
     security: '安全',
   },
 };

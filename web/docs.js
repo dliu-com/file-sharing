@@ -1,7 +1,7 @@
 import { t, say } from './i18n.js';
 import { flow, tiers, stats, table, callout, more } from './diagram.js';
 
-const TABS = ['architecture', 'security'];
+const TABS = ['architecture', 'cost', 'security'];
 const mono = (text) => ({ text, className: 'mono' });
 const num = (text) => ({ text, className: 'num' });
 const PASS = { text: say('✓ 通过', '✓ Pass'), className: 'status' };
@@ -159,6 +159,84 @@ function architecture(root) {
   ])));
 }
 
+// ---------------------------------------------------------------- Cost
+function cost(root) {
+  const add = writer(root);
+  add('h2', say('费用', 'Cost'));
+  add('p', say(
+    '没有服务器、数据库或固定月费：没人访问时几乎不花钱。文件本身仍在 OneDrive，不占 AWS 存储。',
+    'No servers, database or monthly fee: when nobody visits, it costs almost nothing. The files stay in OneDrive and use no AWS storage.',
+  ), 'lead');
+
+  root.append(stats([
+    ['$0', say('固定月费', 'fixed monthly fee'), 'budget'],
+    [say('1 TB 免费', '1 TB free'), say('每月 CloudFront 流量', 'of CloudFront delivery each month'), 'cloudfront'],
+    ['≈ $0.12 / GB', say('超出免费额度后发往香港、新加坡等地（欧洲 $0.085）', 'to Hong Kong, Singapore etc. beyond the free tier (Europe $0.085)'), 'china'],
+    ['≈ $0.03', say('每 1,000 次未命中缓存的文件请求（Lambda@Edge）', 'per 1,000 file requests that miss the cache (Lambda@Edge)'), 'lambda'],
+  ]));
+
+  add('h2', say('各部分怎么计费', 'What each part costs'));
+  add('p', say(
+    '以下为 AWS 公开价格（2026 年 11 月核对）。免费额度按 AWS 账号计算，与其他 dliu.com 网站共用。',
+    'AWS list prices, checked in November 2026. Free tiers are per AWS account, so they are shared with the other dliu.com sites.',
+  ));
+  root.append(table([say('部分', 'Part'), say('计费方式', 'How it is billed'), say('闲置月份', 'Idle month')], [
+    ['OneDrive', say('使用现有 Microsoft 365 空间，不额外收费', 'Uses the existing Microsoft 365 storage; nothing extra'), num('$0')],
+    ['CloudFront', say(
+      '每月免费：1 TB 流出、1,000 万次请求。之后每 GB：欧洲和北美 $0.085，日本 $0.114，香港、新加坡、韩国、台湾 $0.120；每 1 万次 HTTPS 请求约 $0.01。从 OneDrive 取文件进 CloudFront 不收费',
+      'Free each month: 1 TB out and 10 million requests. Then per GB: Europe and North America $0.085, Japan $0.114, Hong Kong, Singapore, South Korea and Taiwan $0.120; about $0.01 per 10,000 HTTPS requests. Fetching files from OneDrive into CloudFront is free',
+    ), num('$0')],
+    [say('CloudFront 函数', 'CloudFront Functions'), say('链接检查和访客 ID，每个请求各一次；每月 200 万次免费，之后每百万次 $0.10', 'Link check and visitor ID, once each per request; 2 million free a month, then $0.10 per million'), num('$0')],
+    ['KeyValueStore', say(
+      '读取：每月 200 万次免费，之后每百万次 $0.03。站长新建、修改或删除链接约 2 次管理调用，列出链接每 50 条 1 次；每 1,000 次 $1',
+      'Reads: 2 million free a month, then $0.03 per million. Creating, changing or deleting a link makes about 2 management calls, and listing links 1 per 50 links; $1 per 1,000 calls',
+    ), num('$0')],
+    ['Lambda@Edge', say(
+      '只在边缘缓存未命中时运行（每次 2 个触发器）；没有免费额度。每百万次 $0.60，每 GB-秒 $0.00005001（512 MB，打开访客会话约 1 秒）',
+      'Runs only on edge cache misses (2 triggers each); no free tier. $0.60 per million runs and $0.00005001 per GB-second (512 MB; opening a guest session takes about a second)',
+    ), num('$0')],
+    ['API Lambda', say(
+      '文件夹列表、登录和管理链接。每月免费 100 万次调用和 40 万 GB-秒，之后每百万次 $0.20（ARM，256 MB）',
+      'Folder listings, sign-in and managing links. Free each month: 1 million calls and 400,000 GB-seconds, then $0.20 per million calls (ARM, 256 MB)',
+    ), num('$0')],
+    [say('S3 网站存储桶', 'S3 site bucket'), say('只放网页和 PDF.js，约 4 MB（S3 标准 $0.023 / GB-月）', 'Only the pages and PDF.js, about 4 MB (S3 Standard $0.023 per GB-month)'), num('< $0.01')],
+    [say('缓存清除', 'Cache invalidations'), say('修改或删除链接时清除 1 个通配路径 /f/<id>*，部署时清除网站文件；每月前 1,000 条路径免费，之后每条 $0.005', 'One wildcard path, /f/<id>*, per changed or deleted link, plus the site files on deploy; the first 1,000 paths a month are free, then $0.005 per path'), num('$0')],
+    ['Parameter Store、KMS', say('标准参数免费；登录密钥用 aws/ssm 密钥解密，每月 2 万次请求免费', 'Standard parameters are free; the sign-in secret is decrypted with the aws/ssm key, 20,000 free requests a month'), num('$0')],
+    ['CloudWatch Logs', say('Lambda 日志保留一个月，每 GB $0.57，每月只有几 KB', 'Lambda logs kept one month; $0.57 per GB, a few KB a month'), num('$0')],
+    [say('证书和 DNS', 'Certificate and DNS'), say('ACM 公共证书免费；别名记录在已有的 dliu.com 区域中，查询免费', 'ACM public certificates are free; alias records in the existing dliu.com zone answer free'), num('$0')],
+    [say('访问日志', 'Traffic logs'), say('计入 traffic.dliu.com：每 GB 日志 $0.25', 'Billed to traffic.dliu.com: $0.25 per GB of log lines'), num('< $0.01')],
+  ]));
+  root.append(callout('power', say(
+    '没有 EC2、容器、负载均衡、NAT 网关、数据库或 WAF，所以不会因为“存在”而产生费用。删除所有链接后，账单实际为 $0。',
+    'There is no EC2, container, load balancer, NAT gateway, database or WAF, so nothing costs money just by existing. Delete every link and the bill is effectively $0.',
+  )));
+
+  add('h2', say('示例', 'Examples'));
+  root.append(table([say('情况', 'Situation'), say('估算', 'Estimate')], [
+    [say('没人访问的一个月', 'A month with no visitors'), num('$0')],
+    [say('把 100 MB 的相册分享给 10 位朋友（1 GB，在免费 1 TB 内）', 'A 100 MB photo album opened by 10 friends (1 GB, inside the free 1 TB)'), num('$0')],
+    [say('超出免费额度后，中国大陆朋友下载 1 GB（经香港等节点）', 'A friend in mainland China downloading 1 GB beyond the free tier (via Hong Kong etc.)'), num('≈ $0.12')],
+    [say('超出免费额度后，欧洲朋友下载 1 GB', 'A friend in Europe downloading 1 GB beyond the free tier'), num('≈ $0.085')],
+    [say('1,000 次未命中缓存的文件请求', '1,000 file requests that miss the cache'), num('≈ $0.03')],
+    [say('新建、修改或删除一个链接', 'Creating, changing or deleting a link'), num('≈ $0.002')],
+  ]));
+
+  root.append(flow({
+    title: say('为什么账单很小', 'What keeps the bill small'),
+    steps: [
+      { icon: 'power', title: say('没有闲置服务器', 'No idle servers'), text: say('函数只在有请求时运行', 'Functions run only when a request comes in') },
+      { icon: 'onedrive', title: say('文件留在 OneDrive', 'Files stay in OneDrive'), text: say('AWS 不存文件，不付存储费', 'AWS stores no files, so no storage bill') },
+      { icon: 'cloudfront', title: say('边缘缓存 1 天', '1-day edge cache'), text: say('同一文件每个边缘只取一次', 'Each edge fetches a file once a day at most') },
+      { icon: 'key', title: say('没有数据库', 'No database'), text: say('链接存在 KeyValueStore，每条 ≤ 1 KB', 'Links live in a KeyValueStore, ≤ 1 KB each') },
+      { icon: 'check', title: say('免费额度', 'Free tiers'), text: say('平常的使用量都在免费额度内', 'Normal use stays inside the free tiers'), tone: 'good' },
+    ],
+  }));
+  add('p', say(
+    'CloudFront 使用所有边缘节点（PriceClass_All）并支持 HTTP/2 和 HTTP/3，因为大部分朋友在欧洲和亚洲；在每月免费的 1 TB 内不会多花钱。',
+    'CloudFront serves from all edge locations (PriceClass_All) over HTTP/2 and HTTP/3, because most friends are in Europe and Asia. Within the free 1 TB a month it costs nothing extra.',
+  ), 'dg-note');
+}
+
 // ---------------------------------------------------------------- Security
 function security(root) {
   const add = writer(root);
@@ -272,6 +350,7 @@ function security(root) {
 }
 
 architecture(document.getElementById('architecture'));
+cost(document.getElementById('cost'));
 security(document.getElementById('security'));
 
 function show(scroll) {
