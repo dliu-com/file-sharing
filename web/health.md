@@ -1,6 +1,6 @@
 # share.dliu.com: health and guest checks
 
-Full technical version of https://share.dliu.com/docs/health, for machines and AI agents. It follows the dliu.com
+Full technical version of the Testing tab, https://share.dliu.com/docs#health, for machines and AI agents. It follows the dliu.com
 health contract used by https://status.dliu.com and is enough on its own to implement the tests.
 
 share.dliu.com (DL Share) turns OneDrive "Anyone" links into short `/s/<id>` links. CloudFront serves the pages from a
@@ -30,8 +30,8 @@ longer than the slow threshold counts as slow.
 | Function | Method | URL | Status | Content type | Body marker or `Location` prefix | Slow after (ms) |
 | --- | --- | --- | --- | --- | --- | --- |
 | `pages` | GET | `https://share.dliu.com/` | 200 | `text/html` | `class="dl-header"` | 2000 |
-| `pages` | GET | `https://share.dliu.com/docs` | 200 | `text/html` | `dl-docs-main` | 2000 |
-| `pages` | GET | `https://share.dliu.com/docs/health` | 200 | `text/html` | `id="functions"` | 2000 |
+| `pages` | GET | `https://share.dliu.com/docs` | 200 | `text/html` | `id="health"` | 2000 |
+| `pages` | GET | `https://share.dliu.com/docs/health` | 301 | - | `/docs#health` | 2000 |
 | `pages` | GET | `https://share.dliu.com/docs/health.md` | 200 | `text/markdown` | `## Guest checks` | 2000 |
 | `pages` | GET | `https://share.dliu.com/_app/style.css` | 200 | `text/css` | `.file-head` | 2000 |
 | `links` | GET | `https://share.dliu.com/s/0000000000/` | 404 | `text/html` | `data-i18n="linkNotFound"` | 2000 |
@@ -103,5 +103,5 @@ found" page and every API response are sent with `Cache-Control: no-store`; `/he
 - Only `GET` and `HEAD`, as an anonymous guest. The tests are read only and must never change content.
 - Use the user agent `dliu-status-bot/1.0 (+https://status.dliu.com/docs)`, so traffic.dliu.com leaves the requests out.
 - Request `/health` at most once a minute; it is cached for 60 s anyway.
-- Keep this file and https://share.dliu.com/docs/health in sync; the repo's `test/health.test.js` checks that they list
+- Keep this file and https://share.dliu.com/docs#health in sync; the repo's `test/health.test.js` checks that they list
   the same functions and checks, and that `/health` reports only those functions.

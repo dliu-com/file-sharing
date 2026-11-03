@@ -5,7 +5,7 @@ import cf from 'cloudfront';
 //   /                   -> landing page            /admin -> owner page (the API checks the sign-in)
 //   /s/<id>[/<path>]    -> viewer page             /f/<id>/<path> -> file bytes (Lambda@Edge fetches from SharePoint)
 //   /api/s/<id>/info    -> public listing API      /api/*, /auth/* -> owner API and sign-in
-//   /docs, /docs/health, /docs/health.md -> docs pages (/health itself has its own behaviour, without this function)
+//   /docs, /docs/health.md -> docs pages; /docs/health -> 301 to /docs#health (the Testing tab) (/health itself has its own behaviour, without this function)
 // For share URLs it looks the id up in the KeyValueStore and passes the OneDrive link to the origin in x-share-*
 // headers. Incoming x-share-* headers are always removed, so visitors cannot forge them.
 
@@ -99,8 +99,15 @@ async function handler(event) {
     request.uri = '/_app/docs.html';
     return request;
   }
-  if (uri === '/docs/health' || uri === '/docs/health/' || uri === '/docs/health.md') {
-    request.uri = uri === '/docs/health.md' ? '/_app/health.md' : '/_app/health.html';
+  if (uri === '/docs/health' || uri === '/docs/health/') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: { location: { value: '/docs#health' }, 'cache-control': { value: 'public, max-age=3600' } },
+    };
+  }
+  if (uri === '/docs/health.md') {
+    request.uri = '/_app/health.md';
     return request;
   }
   if (uri === '/robots.txt' || uri === '/favicon.ico') {

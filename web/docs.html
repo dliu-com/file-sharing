@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <title>Docs · DL Share</title>
-  <meta name="description" content="How share.dliu.com works: architecture, cost, security and health checks">
+  <meta name="description" content="How share.dliu.com works: architecture, cost, security and how it is tested">
   <link rel="icon" type="image/svg+xml" href="/_app/logo.svg">
   <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css">
   <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl-docs.css">
@@ -22,11 +22,164 @@
       <a href="#architecture" data-tab="architecture" data-i18n="architecture">Technical architecture</a>
       <a href="#cost" data-tab="cost" data-i18n="cost">Cost</a>
       <a href="#security" data-tab="security" data-i18n="security">Security</a>
-      <a href="/docs/health" data-i18n="health">Health</a>
+      <a href="#health" data-tab="health" data-i18n="health">Testing</a>
     </nav>
     <article id="architecture" class="dl-docs"><noscript><p>The diagrams on this page need JavaScript.</p></noscript></article>
     <article id="cost" class="dl-docs" hidden></article>
     <article id="security" class="dl-docs" hidden></article>
+    <article id="health" class="dl-docs" hidden>
+      <h2><span data-lang="en">How share.dliu.com is tested</span><span data-lang="zh" hidden>如何检测 share.dliu.com</span></h2>
+      <p class="lead" data-lang="en">Every 15 minutes, <a href="https://status.dliu.com/">status.dliu.com</a> visits DL Share like a friend who has not been sent a link: it never signs in and changes nothing. It opens the public pages, tries a link that doesn't exist, starts (but never finishes) the owner sign-in, and asks <code>/health</code> whether the link store and the sign-in settings answer.</p>
+      <p class="lead" data-lang="zh" hidden><a href="https://status.dliu.com/">status.dliu.com</a> 每 15 分钟访问一次 DL Share，就像一位还没收到链接的朋友：从不登录，也不改任何内容。它打开公开页面，试一个不存在的链接，发起（但不完成）站长登录，并通过 <code>/health</code> 询问链接库和登录设置是否正常。</p>
+
+      <figure class="dg">
+        <figcaption><span data-lang="en">One check, step by step</span><span data-lang="zh" hidden>一次检测的步骤</span></figcaption>
+        <div class="dg-flow">
+          <div class="dg-step"><span class="dg-num">1</span><span class="dg-icon dg-c-clock" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/></svg></span><span class="dg-text"><strong>status.dliu.com</strong><small data-lang="en">every 15 minutes, as a guest</small><small data-lang="zh" hidden>每 15 分钟，以访客身份</small></span></div>
+          <div class="dg-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+          <div class="dg-step"><span class="dg-num">2</span><span class="dg-icon dg-c-edge" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5"/><path d="M3.5 12h17M5 7.5h14M5 16.5h14"/></svg></span><span class="dg-text"><strong data-lang="en">Opens 9 public addresses</strong><strong data-lang="zh" hidden>打开 9 个公开地址</strong><small data-lang="en">pages, a missing link, sign-in, the API</small><small data-lang="zh" hidden>页面、不存在的链接、登录、API</small></span></div>
+          <div class="dg-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+          <div class="dg-step"><span class="dg-num">3</span><span class="dg-icon dg-c-lambda" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6.5 4h3.5l8 16"/><path d="M12.3 10.6 6.5 20"/></svg></span><span class="dg-text"><strong data-lang="en">Asks /health</strong><strong data-lang="zh" hidden>询问 /health</strong><small data-lang="en">answered at most once a minute</small><small data-lang="zh" hidden>每分钟最多真正运行一次</small></span></div>
+          <div class="dg-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></div>
+          <div class="dg-step"><span class="dg-num">4</span><span class="dg-icon dg-c-store" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3.5l8.5 4.5-8.5 4.5L3.5 8z"/><path d="M3.5 12.3l8.5 4.5 8.5-4.5M3.5 16.3l8.5 4.5 8.5-4.5"/></svg></span><span class="dg-text"><strong data-lang="en">Link store and sign-in settings</strong><strong data-lang="zh" hidden>链接库和登录设置</strong><small data-lang="en">one quick read each, nothing changed</small><small data-lang="zh" hidden>各读一次，不做任何修改</small></span></div>
+        </div>
+        <p class="dg-note"><span data-lang="en">Each function ends in one of three results:</span><span data-lang="zh" hidden>每项功能的结果是以下三种之一：</span></p>
+        <div class="dg-flow">
+          <div class="dg-step dg-good"><span class="dg-text"><strong data-lang="en">Pass</strong><strong data-lang="zh" hidden>正常</strong><small data-lang="en">everything answered correctly</small><small data-lang="zh" hidden>一切回答正确</small></span></div>
+          <div class="dg-step dg-warn"><span class="dg-text"><strong data-lang="en">Warn</strong><strong data-lang="zh" hidden>警告</strong><small data-lang="en">slow, or failed once: degraded</small><small data-lang="zh" hidden>变慢，或失败一次：性能下降</small></span></div>
+          <div class="dg-step dg-bad"><span class="dg-text"><strong data-lang="en">Fail</strong><strong data-lang="zh" hidden>失败</strong><small data-lang="en">failed twice in a row: down</small><small data-lang="zh" hidden>连续失败两次：服务中断</small></span></div>
+        </div>
+        <p class="dg-note"><span data-lang="en">The shared files themselves are not fetched: that would need a real share link and would call OneDrive.</span><span data-lang="zh" hidden>不会取真正的分享文件：那需要一个真实的分享链接，并且会访问 OneDrive。</span></p>
+      </figure>
+
+      <h2 id="functions"><span data-lang="en">What is checked</span><span data-lang="zh" hidden>检测内容</span></h2>
+
+      <h3 id="function-pages"><span data-lang="en">Pages</span><span data-lang="zh" hidden>页面</span></h3>
+      <p data-lang="en">The home page, the docs (with this Testing tab) and the page styling open normally. Down means visitors see an error instead of DL Share.</p>
+      <p data-lang="zh" hidden>首页、文档（含本“测试”标签页）和页面样式能正常打开。中断表示访客看到的是错误，而不是 DL Share。</p>
+      <details>
+        <summary><span data-lang="en">Technical details</span><span data-lang="zh" hidden>技术细节</span>: <code>pages</code></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Method</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Content type</th><th scope="col">Body marker or <code>Location</code> prefix</th><th scope="col">Slow after (ms)</th></tr></thead>
+            <tbody>
+              <tr data-function="pages"><td class="mono">GET</td><td class="mono">https://share.dliu.com/</td><td class="num">200</td><td class="mono">text/html</td><td><code>class="dl-header"</code></td><td class="num">2000</td></tr>
+              <tr data-function="pages"><td class="mono">GET</td><td class="mono">https://share.dliu.com/docs</td><td class="num">200</td><td class="mono">text/html</td><td><code>id="health"</code></td><td class="num">2000</td></tr>
+              <tr data-function="pages"><td class="mono">GET</td><td class="mono">https://share.dliu.com/docs/health</td><td class="num">301</td><td class="mono">-</td><td><code>/docs#health</code></td><td class="num">2000</td></tr>
+              <tr data-function="pages"><td class="mono">GET</td><td class="mono">https://share.dliu.com/docs/health.md</td><td class="num">200</td><td class="mono">text/markdown</td><td><code>## Guest checks</code></td><td class="num">2000</td></tr>
+              <tr data-function="pages"><td class="mono">GET</td><td class="mono">https://share.dliu.com/_app/style.css</td><td class="num">200</td><td class="mono">text/css</td><td><code>.file-head</code></td><td class="num">2000</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <h3 id="function-links"><span data-lang="en">Share links</span><span data-lang="zh" hidden>分享链接</span></h3>
+      <p data-lang="en">A link that doesn't exist shows the friendly “Link not found” page, which proves every link is being looked up in the link store. Down means friends' links stop opening.</p>
+      <p data-lang="zh" hidden>不存在的链接会显示友好的“链接不存在”页面，说明每个链接都在链接库里查询过。中断表示朋友打不开链接。</p>
+      <details>
+        <summary><span data-lang="en">Technical details</span><span data-lang="zh" hidden>技术细节</span>: <code>links</code></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Method</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Content type</th><th scope="col">Body marker or <code>Location</code> prefix</th><th scope="col">Slow after (ms)</th></tr></thead>
+            <tbody>
+              <tr data-function="links"><td class="mono">GET</td><td class="mono">https://share.dliu.com/s/0000000000/</td><td class="num">404</td><td class="mono">text/html</td><td><code>data-i18n="linkNotFound"</code></td><td class="num">2000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>/health</code> also reports <code>links</code>: one <code>DescribeKeyValueStore</code> call on the CloudFront KeyValueStore that holds the links (no keys read, no count shown).</p>
+      </details>
+
+      <h3 id="function-signin"><span data-lang="en">Owner sign-in</span><span data-lang="zh" hidden>站长登录</span></h3>
+      <p data-lang="en">The owner's “Sign in” sends the browser on to Microsoft. The check stops there and never signs in. Down means the owner can't manage links (friends' links keep working).</p>
+      <p data-lang="zh" hidden>站长点“登录”后会被转到 Microsoft。检测到此为止，从不真正登录。中断表示站长无法管理链接（朋友的链接仍然可用）。</p>
+      <details>
+        <summary><span data-lang="en">Technical details</span><span data-lang="zh" hidden>技术细节</span>: <code>signin</code></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Method</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Content type</th><th scope="col">Body marker or <code>Location</code> prefix</th><th scope="col">Slow after (ms)</th></tr></thead>
+            <tbody>
+              <tr data-function="signin"><td class="mono">GET</td><td class="mono">https://share.dliu.com/auth/login</td><td class="num">302</td><td class="mono">-</td><td><code>https://login.microsoftonline.com/</code></td><td class="num">3000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><code>/health</code> also reports <code>signin</code>: it loads the sign-in settings from SSM Parameter Store, the same read every sign-in does (cached for 5 minutes). Microsoft is not called.</p>
+      </details>
+
+      <h3 id="function-api"><span data-lang="en">Owner API</span><span data-lang="zh" hidden>站长 API</span></h3>
+      <p data-lang="en">The API behind the owner page answers, and refuses a visitor who isn't signed in. Down means the owner page can't load its links.</p>
+      <p data-lang="zh" hidden>站长页面背后的 API 能应答，并拒绝未登录的访客。中断表示站长页面无法加载链接列表。</p>
+      <details>
+        <summary><span data-lang="en">Technical details</span><span data-lang="zh" hidden>技术细节</span>: <code>api</code></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Method</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Content type</th><th scope="col">Body marker or <code>Location</code> prefix</th><th scope="col">Slow after (ms)</th></tr></thead>
+            <tbody>
+              <tr data-function="api"><td class="mono">GET</td><td class="mono">https://share.dliu.com/api/me</td><td class="num">401</td><td class="mono">application/json</td><td><code>"error"</code></td><td class="num">3000</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <h3 id="function-https"><span data-lang="en">Secure connection</span><span data-lang="zh" hidden>安全连接</span></h3>
+      <p data-lang="en">Typing <code>http://share.dliu.com</code> moves visitors to the secure <code>https://</code> site. Down means old <code>http://</code> links stop reaching the site.</p>
+      <p data-lang="zh" hidden>输入 <code>http://share.dliu.com</code> 会自动转到安全的 <code>https://</code> 网站。中断表示旧的 <code>http://</code> 链接无法打开网站。</p>
+      <details>
+        <summary><span data-lang="en">Technical details</span><span data-lang="zh" hidden>技术细节</span>: <code>https</code></summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Method</th><th scope="col">URL</th><th scope="col">Status</th><th scope="col">Content type</th><th scope="col">Body marker or <code>Location</code> prefix</th><th scope="col">Slow after (ms)</th></tr></thead>
+            <tbody>
+              <tr data-function="https"><td class="mono">HEAD</td><td class="mono">http://share.dliu.com/</td><td class="num">301</td><td class="mono">-</td><td><code>https://share.dliu.com/</code></td><td class="num">2000</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+
+      <h2 id="health-endpoint"><span data-lang="en">Health endpoint</span><span data-lang="zh" hidden>健康检查接口</span></h2>
+      <p data-lang="en"><code>/health</code> answers with one word per function: pass, warn or fail. It needs no sign-in, reveals nothing private, and runs at most about once a minute however often it's asked.</p>
+      <p data-lang="zh" hidden><code>/health</code> 为每项功能给出一个结果：正常、警告或失败。它不需要登录，不透露任何私密信息，不管被请求多少次，每分钟最多真正运行一次。</p>
+      <details>
+        <summary><span data-lang="en">Technical details</span><span data-lang="zh" hidden>技术细节</span>: <code>/health</code></summary>
+        <p><code>GET https://share.dliu.com/health</code> (also <code>HEAD</code>) returns <code>200</code> when <code>status</code> is <code>pass</code> or <code>warn</code> and <code>503</code> when it is <code>fail</code>, with <code>Content-Type: application/health+json</code> and <code>Cache-Control: public, max-age=60</code>. Other methods get <code>403</code> from CloudFront.</p>
+        <pre><code>{
+  "status": "pass",
+  "time": "2026-11-03T23:00:00Z",
+  "functions": [
+    { "key": "links", "name": "Share links", "status": "pass" },
+    { "key": "signin", "name": "Owner sign-in", "status": "warn", "output": "slow" }
+  ]
+}</code></pre>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Key</th><th scope="col">Reads</th><th scope="col">Warn</th><th scope="col">Fail</th></tr></thead>
+            <tbody>
+              <tr data-endpoint="links"><td><code>links</code></td><td>CloudFront KeyValueStore <code>DescribeKeyValueStore</code></td><td><code>slow</code> (over 1000 ms) or <code>not ready</code></td><td><code>timeout</code> (2000 ms) or <code>read failed</code></td></tr>
+              <tr data-endpoint="signin"><td><code>signin</code></td><td>SSM <code>GetParameters</code> for the sign-in settings (cached 5 min)</td><td><code>slow</code> (over 1000 ms)</td><td><code>timeout</code> (2000 ms), <code>not configured</code> or <code>read failed</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The top-level <code>status</code> is the worst of the functions'. CloudFront's <code>/health</code> behaviour caches for 60 s with a cache key of nothing (no headers, cookies or query string) and has no origin request policy, so no cookies, <code>Authorization</code> header or query string reach the API, and the handler reads none. <code>output</code> is only ever <code>slow</code>, <code>not ready</code>, <code>timeout</code>, <code>not configured</code> or <code>read failed</code>. The checks run in parallel, so the answer comes within about 2 s. A check over 1000 ms is <code>slow</code>, except on the function's first run after a cold start, whose time is mostly Lambda start-up.</p>
+        <p>Every guest check sends no cookies, no <code>Authorization</code> header and no query string, doesn't follow redirects, and uses the user agent <code>dliu-status-bot/1.0 (+https://status.dliu.com/docs)</code>. A check passes when the status matches, the <code>Content-Type</code> starts with the expected type (<code>-</code>: not checked) and the body contains the marker (for a redirect, the <code>Location</code> header starts with it).</p>
+        <p>Caching: HTML pages send <code>Cache-Control: no-cache</code>; <code>style.css</code> and <code>health.md</code> send <code>public, max-age=0, must-revalidate, s-maxage=86400</code> and every deploy invalidates them. The “Link not found” page and the API send <code>no-store</code>.</p>
+      </details>
+
+      <h2 id="not-tested"><span data-lang="en">What isn't tested</span><span data-lang="zh" hidden>不检测的内容</span></h2>
+      <ul data-lang="en">
+        <li>Opening real shared files and folders: that needs a real share link, and the files come from OneDrive, which the checks never call.</li>
+        <li>Everything the owner does after signing in: creating, renaming, changing and deleting links.</li>
+        <li>Finishing the Microsoft sign-in, which needs the owner's own account.</li>
+        <li>Removing a changed or deleted link's files from the CloudFront cache.</li>
+      </ul>
+      <ul data-lang="zh" hidden>
+        <li>打开真实的分享文件和文件夹：这需要真实的分享链接，而文件来自 OneDrive，检测从不访问 OneDrive。</li>
+        <li>站长登录后的所有操作：创建、重命名、修改和删除链接。</li>
+        <li>完成 Microsoft 登录，这需要站长自己的账户。</li>
+        <li>链接修改或删除后，从 CloudFront 缓存中清除其文件。</li>
+      </ul>
+
+      <p><a href="/docs/health.md"><span data-lang="en">Full technical version (Markdown)</span><span data-lang="zh" hidden>完整技术版本（Markdown）</span></a></p>
+      <p class="source"><span data-lang="en">Source</span><span data-lang="zh" hidden>源代码</span>: <a href="https://github.com/dliu-com/file-sharing">dliu-com/file-sharing</a></p>
+    </article>
   </main>
   <footer class="dl-footer"><a class="dl-footer-logo" href="https://dliu.com" aria-label="dliu.com"><img src="https://files.dliu.com/dliu.com/favicon.png" alt="" width="24" height="24"></a><a href="https://dliu.com">dliu.com</a> · <a href="/docs" data-i18n="docs">Docs</a></footer>
 </body>

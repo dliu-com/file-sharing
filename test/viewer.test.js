@@ -39,8 +39,11 @@ describe('viewer function', () => {
     expect((await handler(request('/admin'))).uri).toBe('/_app/admin.html');
     expect((await handler(request('/admin/'))).uri).toBe('/_app/admin.html');
     expect((await handler(request('/docs'))).uri).toBe('/_app/docs.html');
-    expect((await handler(request('/docs/health'))).uri).toBe('/_app/health.html');
-    expect((await handler(request('/docs/health/'))).uri).toBe('/_app/health.html');
+    for (const uri of ['/docs/health', '/docs/health/']) {
+      const moved = await handler(request(uri));
+      expect(moved.statusCode).toBe(301);
+      expect(moved.headers.location.value).toBe('/docs#health');
+    }
     expect((await handler(request('/docs/health.md'))).uri).toBe('/_app/health.md');
     expect((await handler(request('/robots.txt'))).uri).toBe('/_app/robots.txt');
     expect((await handler(request('/favicon.ico'))).uri).toBe('/_app/logo.svg');

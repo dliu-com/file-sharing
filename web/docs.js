@@ -1,7 +1,8 @@
 import { t, say } from './i18n.js';
 import { flow, tiers, stats, table, callout, more } from './diagram.js';
 
-const TABS = ['architecture', 'cost', 'security'];
+// health (Testing) is static HTML in docs.html; the others are drawn below.
+const TABS = ['architecture', 'cost', 'security', 'health'];
 const mono = (text) => ({ text, className: 'mono' });
 const num = (text) => ({ text, className: 'num' });
 const PASS = { text: say('✓ 通过', '✓ Pass'), className: 'status' };

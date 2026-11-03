@@ -53,9 +53,10 @@ flowchart LR
 | --- | --- | --- |
 | `/` | Landing page | S3 `/_app/index.html` |
 | `/admin` | Owner page | S3 `/_app/admin.html`, which calls the API |
-| `/docs` | Public docs (CN/EN): Technical architecture, Cost and Security tabs, drawn with the diagram kit shared with the other dliu.com sites (`web/diagram.js`, styled by the shared `dl-docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
-| `/docs/health` | Public "how to test this site" page (CN/EN) for [status.dliu.com](https://status.dliu.com), per the [HEALTH.md contract](https://github.com/dliu-com/status/blob/main/HEALTH.md): a diagram, plain-language lines per function, and the technical details (URLs, status codes, markers) folded in `<details>` | S3 `/_app/health.html` |
-| `/docs/health.md` | The same, fully unfolded, as `text/markdown`, enough on its own to implement the checks. `test/health.test.js` checks that its tables match the HTML page row for row. | S3 `/_app/health.md` |
+| `/docs` | Public docs (CN/EN): Technical architecture, Cost, Security and Testing tabs, drawn with the diagram kit shared with the other dliu.com sites (`web/diagram.js`, styled by the shared `dl-docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
+| `/docs#health` | The docs page's **Testing** tab (CN/EN), "how to test this site" for [status.dliu.com](https://status.dliu.com), per the [HEALTH.md contract](https://github.com/dliu-com/status/blob/main/HEALTH.md): a diagram, plain-language lines per function, and the technical details (URLs, status codes, markers) folded in `<details>`. It is static HTML in `web/docs.html`. | S3 `/_app/docs.html` |
+| `/docs/health` | Old address of the Testing tab: `301` to `/docs#health` | CloudFront Function |
+| `/docs/health.md` | The same, fully unfolded, as `text/markdown`, enough on its own to implement the checks. `test/health.test.js` checks that its tables match the Testing tab row for row. | S3 `/_app/health.md` |
 | `/health` | Public health check, `application/health+json`: `{status, time, functions}` with `links` (one KeyValueStore describe) and `signin` (the Entra config from SSM, cached 5 minutes). 200 for pass/warn, 503 for fail, no private details. Its own CloudFront behaviour forwards no cookies, headers or query string and caches for 60 s, so at most one Lambda call a minute per edge. | API Lambda |
 | `/s/<id>/[path]` | Viewer page: the share's root, a subfolder (ending in `/`) or one file's preview | S3 `/_app/view.html`, which calls `/api/s/<id>/info` |
 | `/f/<id>/<path>` | Raw file bytes, shown inline when the type is safe to show | Lambda@Edge and SharePoint, cached by CloudFront |
@@ -105,7 +106,7 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 
 | What | Edge copy | Browser | Cleared by |
 |---|---|---|---|
-| Page HTML (`/`, `/s/…`, `/admin`, `/docs`, `/docs/health`) | none (`no-cache`) | revalidates | not needed |
+| Page HTML (`/`, `/s/…`, `/admin`, `/docs`) | none (`no-cache`) | revalidates | not needed |
 | `/_app/*` scripts, styles, icons | 1 day (`s-maxage=86400`) | revalidates (`max-age=0, must-revalidate`) | every deploy invalidates `/_app/*` |
 | `/_app/vendor/*` (PDF.js) | 1 day | 5 min (+ `stale-while-revalidate`) | every deploy invalidates `/_app/vendor/*` |
 | `/f/<id>/…` file bytes | 1 day (Lambda@Edge sends `s-maxage=86400`; the cache policy's 7-day max TTL is only a cap) | 1 hour | admin **Refresh**, or editing / deleting the link (invalidates `/f/<id>*`) |
@@ -196,7 +197,7 @@ Then sign in at `https://share.dliu.com/admin` and create a link.
 
 | Command | What it does |
 | --- | --- |
-| `make test` | Jest tests for the viewer function, SharePoint module, edge function, API, `/health`, the health docs (HTML and Markdown in sync) and stack |
+| `make test` | Jest tests for the viewer function, SharePoint module, edge function, API, `/health`, the Testing tab and `health.md` (in sync) and stack |
 | `make probe` | From this computer, checks that SharePoint still answers the way the site expects (see below) |
 | `make smoke` | Against the live site: creates a throwaway link to the test share, waits for it to reach the KeyValueStore, checks the viewer page, a range download, `?dl=1`, 404s and security headers, then deletes the link. `--keep` keeps it. |
 | `make pentest` | Live black-box penetration tests (no credentials): auth bypass, forged and replayed cookies, OIDC, link guessing, XSS, CRLF, CORS, cache poisoning, hidden files, TLS and headers. Prints a Markdown table; exits 1 on any failure. |

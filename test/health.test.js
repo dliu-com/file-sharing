@@ -1,9 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-// Guards the dliu.com health contract (dliu-com/status HEALTH.md): /docs/health, /docs/health.md and /health.
+// Guards the dliu.com health contract (dliu-com/status HEALTH.md): the /docs#health Testing tab, /docs/health.md and /health.
 const read = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
-const html = read('web/health.html');
+const docs = read('web/docs.html');
+const html = docs.split('<article id="health" class="dl-docs" hidden>')[1].split('</article>')[0];
 const md = read('web/health.md');
 const { createHandler } = require('../lambda/api/index');
 const { createHealth, checkLinks, checkSignin, FUNCTIONS, CHECK_TIMEOUT_MS } = require('../lambda/api/health');
@@ -18,11 +19,11 @@ const section = (title) => md.split(/^## /m).find((part) => part.startsWith(`${t
 const mdTable = (title) => section(title).split('\n').filter((line) => line.startsWith('| ') && !line.startsWith('| ---'))
   .slice(1).map((line) => line.slice(2, -2).split(' | ').map((cell) => cell.replace(/^`|`$/g, '')));
 
-describe('/docs/health and /docs/health.md', () => {
-  test('the viewer function serves both, and the HTML page is in the docs tabs', () => {
-    expect(read('functions/viewer.js')).toContain("request.uri = uri === '/docs/health.md' ? '/_app/health.md' : '/_app/health.html';");
-    expect(read('web/docs.html')).toContain('<a href="/docs/health" data-i18n="health">Health</a>');
-    expect(html).toContain('<a href="/docs/health" aria-current="page" data-i18n="health">Health</a>');
+describe('/docs#health and /docs/health.md', () => {
+  test('Testing is a tab on /docs, and the separate health page is gone (viewer.test.js checks the 301)', () => {
+    expect(docs).toContain('<a href="#health" data-tab="health" data-i18n="health">Testing</a>');
+    expect(read('web/docs.js')).toContain("const TABS = ['architecture', 'cost', 'security', 'health'];");
+    expect(fs.existsSync(path.join(__dirname, '..', 'web/health.html'))).toBe(false);
   });
 
   test('the page has the dg-flow diagram with pass, warn and fail results', () => {
@@ -73,12 +74,11 @@ describe('/docs/health and /docs/health.md', () => {
     for (const url of ['https://share.dliu.com/', 'https://share.dliu.com/docs', 'https://share.dliu.com/docs/health',
       'https://share.dliu.com/docs/health.md', 'https://share.dliu.com/_app/style.css', 'https://share.dliu.com/s/0000000000/',
       'https://share.dliu.com/auth/login', 'https://share.dliu.com/api/me']) expect(urls).toContain(url);
-    expect(viewer).toContain("uri === '/docs/health'");
+    expect(viewer).toContain("location: { value: '/docs#health' }");
     expect(viewer).toContain('data-i18n="linkNotFound"');
     expect(read('web/style.css')).toContain('.file-head');
     expect(read('web/index.html')).toContain('class="dl-header"');
-    expect(read('web/docs.html')).toContain('dl-docs-main');
-    expect(html).toContain('id="functions"');
+    expect(docs).toContain('<article id="health"');
     expect(md).toContain('## Guest checks');
   });
 
