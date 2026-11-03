@@ -73,3 +73,23 @@ table.files td.actions .row { justify-content: flex-end; flex-wrap: nowrap; gap:
 .dg-icon.dg-c-edge { --dg: #8c4fff; }
 .dg-icon.dg-c-lambda { --dg: #ed7100; }
 .dg-icon.dg-c-store { --dg: #e7157b; }
+.dg-icon.dg-c-lock { --dg: #3f8624; }
+
+/* Testing tab (/docs#health): plain-words table and the checks-per-function bar chart (no inline styles under the CSP). */
+.health-table th[scope="row"] strong { display: block; }
+.health-badge { color: var(--dl-muted); font-weight: 400; }
+.health-ok { color: #1a7f37; }
+.health-down { color: #b42318; }
+.health-chart { display: grid; gap: 8px; }
+.health-row { display: grid; grid-template-columns: clamp(6em, 30%, 11em) minmax(0, 1fr); align-items: center; gap: 10px; font-size: 14px; }
+.health-track { display: flex; gap: 2px; }
+.health-bar { display: flex; align-items: center; justify-content: flex-end; box-sizing: border-box; height: 24px; padding: 0 8px; border-radius: 6px; color: #fff; font-weight: 600; font-size: 13px; }
+.health-visit { background: var(--dl-accent); }
+.health-self { background: #e7157b; }
+.health-bar[data-n="1"] { width: 20%; }
+.health-bar[data-n="2"] { width: 40%; }
+.health-bar[data-n="3"] { width: 60%; }
+.health-bar[data-n="4"] { width: 80%; }
+.health-bar[data-n="5"] { width: 100%; }
+.health-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin: 0 4px 0 10px; vertical-align: -1px; }
+.health-legend .health-key:first-child { margin-left: 0; }
