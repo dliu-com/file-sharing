@@ -321,7 +321,7 @@ function security(root) {
     [mono('SEC-4'), say('低', 'Low'), say(
       '没有 WAF 或限流；拿到有效链接的人反复下载大文件，流量费没有上限（见下方“费用攻击”）。WAF 每月约 $6 起。',
       'No WAF or rate limit; someone with a valid link who downloads a large file over and over has no cap on transfer cost (see “Denial of wallet” below). WAF starts at about $6 a month.',
-    ), DECIDE],
+    ) + say('站长决定不使用 WAF（2026-11-03）：链接只发给朋友，可随时删除。', ' The owner chose not to use WAF (3 November 2026): links go only to friends and can be deleted at any time.'), ACCEPTED],
     [mono('SEC-5'), say('低', 'Low'), say(
       '站长判断只看 Microsoft 账号是否为本租户的 @dliu.com，没有对象 ID 白名单；租户里的任何账号都能管理链接。',
       'The owner check only requires an @dliu.com account in this tenant, with no object-ID allow-list; any account in the tenant could manage links.',

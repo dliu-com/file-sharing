@@ -132,7 +132,9 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 | All dependencies | `npm audit` | 22 low/moderate in the jest and aws-cdk-lib tool chains; none in the Lambda bundles |
 | Unit tests | `make test` | 60 pass, including SEC-1 and SEC-2 regressions |
 
-Open owner decisions: log retention for the Lambda@Edge and CDK helper log groups (SEC-3), WAF or rate limiting (SEC-4), an object-ID allow-list or Entra user assignment for the owner (SEC-5), and raising the Lambda@Edge regional concurrency (SEC-8).
+No WAF or rate limit (SEC-4): the owner decided against WAF (about $6+ a month) on 2026-11-03 and accepts the risk, because links go only to friends and a misused link can be deleted.
+
+Open owner decisions: log retention for the Lambda@Edge and CDK helper log groups (SEC-3), an object-ID allow-list or Entra user assignment for the owner (SEC-5), and raising the Lambda@Edge regional concurrency (SEC-8).
 
 ### China reachability
 
