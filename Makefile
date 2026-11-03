@@ -1,7 +1,7 @@
 AWS_REGION ?= eu-west-1
 STACK_NAME ?= FileSharing
 
-.PHONY: install test synth diff deploy set-secrets outputs probe smoke dev vendor
+.PHONY: install test synth diff deploy set-secrets outputs probe smoke pentest pentest-owner dev vendor
 
 install:
 	npm ci
@@ -39,6 +39,13 @@ probe:
 # End-to-end test against the deployed site: creates a throwaway link to the test share, opens it and deletes it.
 smoke:
 	AWS_REGION=$(AWS_REGION) node scripts/smoke-test.js
+
+# Live penetration tests (see the README). pentest-owner also signs a short owner session and makes throwaway links.
+pentest:
+	node scripts/pentest.js
+
+pentest-owner:
+	AWS_REGION=$(AWS_REGION) node scripts/pentest.js --owner
 
 # Local preview that runs the real viewer function, API and edge code (no AWS). See scripts/dev-server.js.
 dev: vendor

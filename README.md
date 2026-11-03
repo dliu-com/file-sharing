@@ -135,7 +135,7 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 | `lambda/edge/index.js`, `lambda/edge/mime.js` | Lambda@Edge file proxy |
 | `lambda/api/` | API Lambda: sign-in (`auth.js`), settings from SSM (`config.js`), KeyValueStore (`store.js`), link management (`shares.js`), routing (`index.js`) |
 | `web/` | Static pages, uploaded to S3 under `/_app/`. They use the [shared dliu.com look](https://files.dliu.com/dliu.com/README.md): `dl.css` (and `dl-docs.css` on the docs page) load from `files.dliu.com` first, with the `dl-header`/`dl-footer` markup and `dl-*` buttons; `web/style.css` holds only this site's rules (file tables, previews, the PDF viewer) on the `--dl-*` colours, and `test/shared-ui.test.js` guards it. The site's own logo, `web/logo.svg`, is in the header (with "DL Share", linking home) and is the favicon (`/favicon.ico` serves it); the shared DL icon leads the footer and links to dliu.com. `web/pdf.js` draws PDF previews with PDF.js from `web/vendor/pdfjs/`. Cache headers are in [Caching and Refresh](#caching-and-refresh). The distribution serves HTTP/2 and HTTP/3 |
-| `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make test`, `synth`, `diff`, `deploy` and `dev` run it) |
+| `scripts/` | `set-secrets.sh`, `probe.js`, `smoke-test.js`, `pentest.js`, `dev-server.js`, `vendor-pdfjs.js` (copies `pdfjs-dist` into the git-ignored `web/vendor/pdfjs/`; `make test`, `synth`, `diff`, `deploy` and `dev` run it) |
 | `test/` | Jest tests (`make test`) |
 
 ## Stacks
@@ -172,9 +172,11 @@ Then sign in at `https://share.dliu.com/admin` and create a link.
 | `make test` | Jest tests for the viewer function, SharePoint module, edge function, API and stack |
 | `make probe` | From this computer, checks that SharePoint still answers the way the site expects (see below) |
 | `make smoke` | Against the live site: creates a throwaway link to the test share, waits for it to reach the KeyValueStore, checks the viewer page, a range download, `?dl=1`, 404s and security headers, then deletes the link. `--keep` keeps it. |
+| `make pentest` | Live black-box penetration tests (no credentials): auth bypass, forged and replayed cookies, OIDC, link guessing, XSS, CRLF, CORS, cache poisoning, hidden files, TLS and headers. Prints a Markdown table; exits 1 on any failure. |
+| `make pentest-owner` | The same plus owner tests (needs AWS credentials): signs a 10-minute owner session from SSM, checks CSRF, injection, traversal and leaks, makes two throwaway links and checks revocation and expiry (including cached files), then deletes them. Prints no file names or links. Takes about 5 minutes. |
 | `make dev` | Local preview at `http://localhost:8787` that runs the real viewer function, API and edge code against real OneDrive, with an in-memory store, a fake signed-in owner and no AWS |
 
-`probe`, `smoke` and `dev` need a test OneDrive link. Set it in `SHARE_PROBE_LINK`, or for `probe` in the untracked `config/probe.local.json` (`{ "link": "…" }`). Never commit it.
+`probe`, `smoke` and `dev` need a test OneDrive link (`pentest-owner` uses it too, or else the oldest existing share). Set it in `SHARE_PROBE_LINK`, or for `probe` in the untracked `config/probe.local.json` (`{ "link": "…" }`). Never commit it.
 
 ## When SharePoint changes
 
