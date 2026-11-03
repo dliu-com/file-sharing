@@ -64,6 +64,13 @@ test('Lambda@Edge goes to a us-east-1 stack', () => {
   expect((edgeStacks[0] as any).region).toBe('us-east-1');
 });
 
+test('every log group CDK manages keeps logs for 90 days', () => {
+  const groups = Object.values(template.findResources('AWS::Logs::LogGroup'));
+  expect(groups.length).toBeGreaterThan(0);
+  for (const g of groups) expect((g as any).Properties.RetentionInDays).toBe(90);
+  template.resourceCountIs('Custom::LogRetention', 0);
+});
+
 test('API can read and write the KeyValueStore, read its secrets and invalidate', () => {
   template.hasResourceProperties('AWS::Lambda::Function', {
     Runtime: 'nodejs22.x',

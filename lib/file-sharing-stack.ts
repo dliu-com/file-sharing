@@ -87,7 +87,9 @@ export class FileSharingStack extends Stack {
       },
       bundling: { externalModules: [], target: 'node22', minify: true, sourceMap: false },
       logGroup: new logs.LogGroup(this, 'ApiLogs', {
-        retention: logs.RetentionDays.ONE_MONTH,
+        // All dliu.com log groups keep 90 days. CDK's helper Lambdas and the Lambda@Edge regional groups are
+        // created by AWS on first run, so their 90 days is set outside this stack (also for any new edge region).
+        retention: logs.RetentionDays.THREE_MONTHS,
         removalPolicy: RemovalPolicy.DESTROY,
       }),
     });

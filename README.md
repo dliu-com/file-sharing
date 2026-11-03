@@ -119,7 +119,8 @@ The viewer page calls `GET /api/s/<id>/info?path=…`. The CloudFront Function v
 - Links are bearer tokens: anyone who has a link can use it. Expiry and deleting here are conveniences; the OneDrive link's own settings are the real control (see Trust model).
 - Owner API `POST` requests need the session cookie (`SameSite=Lax`, `__Host-`) and a matching `Origin` header.
 - The owner session and the transient sign-in cookie (state, nonce, PKCE verifier) are HMAC-signed with **different keys** derived from the Entra client secret, and each carries a `typ` claim; `getSession` accepts only `typ: "session"` with a user. Before this (SEC-1, fixed in `fba7bcb`) the sign-in cookie, which anyone can get from `/auth/login`, could be replayed as an owner session.
-- The API Lambda has reserved concurrency 10 (SEC-2, `71565f8`), so anonymous `/auth/*` and `/api/*` floods can't starve the other sites' Lambdas or run up a large bill. Lambda@Edge is capped by the account's regional concurrency (10 outside us-east-1).
+- The API Lambda has reserved concurrency 10 (SEC-2, `71565f8`), so anonymous `/auth/*` and `/api/*` floods can't starve the other sites' Lambdas or run up a large bill. Lambda@Edge is capped by the account's regional concurrency quota (10 outside eu-west-1; 1,000 requested in 12 regions on 2026-11-03, SEC-8).
+- Logs: every log group keeps 90 days (SEC-3). CDK sets this for the API group. AWS creates the CDK helper and Lambda@Edge regional groups on first run, so their 90 days is set outside the stack; set it for any new edge region too.
 
 **Security review, 2026-11-03.** Threat model (assets, actors, STRIDE per component, denial of wallet), findings SEC-1 to SEC-10, the live test table and residual risks are on [/docs#security](https://share.dliu.com/docs#security). To repeat it:
 
@@ -136,7 +137,9 @@ No WAF or rate limit (SEC-4): the owner decided against WAF (about $6+ a month) 
 
 Owner check (SEC-5): any @dliu.com account in the tenant counts as the owner. The owner accepted this on 2026-11-03 and manages who can sign in through the Microsoft Entra app, not in code.
 
-Open owner decisions: log retention for the Lambda@Edge and CDK helper log groups (SEC-3), and raising the Lambda@Edge regional concurrency (SEC-8).
+Log retention (SEC-3): resolved on 2026-11-03; every log group keeps 90 days at the owner's request.
+
+Lambda@Edge concurrency (SEC-8): the owner chose to raise it. On 2026-11-03, 1,000 was requested in us-east-1/2, us-west-1/2, eu-west-2, eu-central-1, ap-northeast-1/2, ap-southeast-1/2, ap-south-1 and sa-east-1 (eu-west-1 is already 400). It's pending AWS approval. Trade-off: fewer 503s under load, but the worst case for uncached random file paths with a valid link rises from about $1.1/h to about $110/h per region.
 
 ### China reachability
 

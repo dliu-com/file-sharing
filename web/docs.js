@@ -241,7 +241,8 @@ function cost(root) {
 const REVIEWED = say('2026 年 11 月 3 日', '3 November 2026');
 const FIXED = (commit) => ({ text: say(`已修复 ${commit}`, `Fixed ${commit}`), className: 'status fixed' });
 const ACCEPTED = { text: say('接受', 'Accepted'), className: 'status' };
-const DECIDE = { text: say('待站长决定', 'Owner to decide'), className: 'risk-medium' };
+const RESOLVED = { text: say('已解决', 'Resolved'), className: 'status fixed' };
+const REQUESTED = { text: say('已申请', 'Requested'), className: 'status fixed' };
 
 function security(root) {
   const add = writer(root);
@@ -317,7 +318,7 @@ function security(root) {
     [mono('SEC-3'), say('低', 'Low'), say(
       'Lambda@Edge 的区域日志组和 CDK 辅助函数的日志组永不过期（只含 ID、状态和错误信息）。设置保留期会删除旧日志，需站长同意。',
       'The Lambda@Edge regional log groups and the CDK helper log groups never expire (they hold only IDs, statuses and errors). Setting retention deletes old logs, so it needs the owner’s OK.',
-    ), DECIDE],
+    ) + say('已解决（2026-11-03）：站长要求所有日志组保留 90 天，已全部设置；新的边缘区域也需同样设置。', ' Resolved (3 November 2026): at the owner’s request every log group keeps 90 days; a new edge region needs the same setting.'), RESOLVED],
     [mono('SEC-4'), say('低', 'Low'), say(
       '没有 WAF 或限流；拿到有效链接的人反复下载大文件，流量费没有上限（见下方“费用攻击”）。WAF 每月约 $6 起。',
       'No WAF or rate limit; someone with a valid link who downloads a large file over and over has no cap on transfer cost (see “Denial of wallet” below). WAF starts at about $6 a month.',
@@ -337,7 +338,7 @@ function security(root) {
     [mono('SEC-8'), say('低', 'Low'), say(
       'Lambda@Edge 在 us-east-1 以外的区域并发配额为 10：它限制了费用，但流量大时可能出现 503。免费提高配额是站长的决定。',
       'Lambda@Edge concurrency is 10 per region outside us-east-1: it caps cost, but heavy traffic could see 503s. Raising the quota is free and the owner’s call.',
-    ), DECIDE],
+    ) + say('站长决定提高（2026-11-03）：已在 12 个区域申请 1000，等待 AWS 批准。代价是下方“费用攻击”的上限随之提高。', ' The owner chose to raise it (3 November 2026): 1,000 requested in 12 regions, pending AWS approval. The trade-off is a higher cap in “Denial of wallet” below.'), REQUESTED],
     [mono('SEC-9'), say('信息', 'Info'), say(
       '删除链接约 1 分钟后才到达所有 CloudFront 主机（实测 44–60 秒）；过期由时间判断，立即生效。',
       'A deleted link takes about a minute to reach every CloudFront host (44–60 s measured); expiry is checked by time and is immediate.',
@@ -369,7 +370,7 @@ function security(root) {
   add('h3', say('STRIDE（按组件）', 'STRIDE per component'));
   root.append(table([say('组件', 'Component'), say('主要威胁', 'Main threats'), say('防护', 'Controls')], [
     [say('CloudFront 函数 + KeyValueStore', 'CloudFront Function + KeyValueStore'), say('仿冒（伪造 x-share-*）、信息泄漏（猜 ID）、提权（过期链接）', 'Spoofing (forged x-share-*), information disclosure (guessing IDs), elevation (expired links)'), say('删除访问者的 x-share-*；ID 必须是 10 位字母数字；在缓存前检查存在和过期；只有 API 能写 KVS', 'Strips visitor x-share-*; IDs must be 10 alphanumerics; existence and expiry checked before the cache; only the API can write the KVS')],
-    [mono('Lambda@Edge FileProxy'), say('篡改（路径穿越、SSRF）、信息泄漏（SharePoint Cookie/头）、拒绝服务', 'Tampering (traversal, SSRF), information disclosure (SharePoint cookies and headers), denial of service'), say('路径逐段检查；只连链接自己的 SharePoint 主机且只跟随同主机跳转；响应头白名单；HTML/SVG 作为附件；没有 AWS 权限；每区域并发 10', 'Path checked segment by segment; talks only to the link’s own SharePoint host and same-host redirects; response header allow-list; HTML/SVG as attachments; no AWS permissions; 10 concurrent per region')],
+    [mono('Lambda@Edge FileProxy'), say('篡改（路径穿越、SSRF）、信息泄漏（SharePoint Cookie/头）、拒绝服务', 'Tampering (traversal, SSRF), information disclosure (SharePoint cookies and headers), denial of service'), say('路径逐段检查；只连链接自己的 SharePoint 主机且只跟随同主机跳转；响应头白名单；HTML/SVG 作为附件；没有 AWS 权限；受账号每区域并发配额限制（SEC-8）', 'Path checked segment by segment; talks only to the link’s own SharePoint host and same-host redirects; response header allow-list; HTML/SVG as attachments; no AWS permissions; bounded by the account’s per-region concurrency quota (SEC-8)')],
     [mono('API Lambda'), say('仿冒（会话伪造、令牌混用 SEC-1）、篡改（CSRF、注入）、拒绝服务（SEC-2）', 'Spoofing (forged sessions, token confusion SEC-1), tampering (CSRF, injection), denial of service (SEC-2)'), say('HMAC 会话带 typ、常量时间比较；POST 需会话 + 本站 Origin + JSON；输入校验（链接主机、ID、过期时间、10 KB 上限）；函数地址只接受 CloudFront 签名；并发 10', 'HMAC session with typ, constant-time compare; POST needs a session, this site’s Origin and JSON; input validation (link host, id, expiry, 10 KB limit); function URL accepts only CloudFront-signed calls; concurrency 10')],
     [say('Microsoft 登录', 'Microsoft sign-in'), say('仿冒（伪造回调、重放、开放重定向）', 'Spoofing (forged callback, replay, open redirect)'), say('PKCE S256、state、nonce；检查签发者、租户、受众；返回地址只能是本站相对路径', 'PKCE S256, state, nonce; issuer, tenant and audience checked; return path must be relative to this site')],
     [say('S3 网站存储桶', 'S3 site bucket'), say('信息泄漏、篡改', 'Information disclosure, tampering'), say('全部禁止公开、只能经 CloudFront（OAC）读取、SSE-S3、只限 HTTPS', 'Block all public access, readable only through CloudFront (OAC), SSE-S3, HTTPS only')],
@@ -382,7 +383,7 @@ function security(root) {
   root.append(table([say('路径', 'Path'), say('最坏情况', 'Worst case'), say('上限', 'Cap')], [
     [say('没有链接：/auth/*、/api/*', 'No link: /auth/*, /api/*'), num('≈ $0.20 / h'), say('API 并发 10（SEC-2）', 'API concurrency 10 (SEC-2)')],
     [say('没有链接：其他地址', 'No link: anything else'), num(say('≈ $1 / 100 万次请求', '≈ $1 per million requests')), say('CloudFront 函数直接返回 404；请求费没有上限', 'The CloudFront Function answers 404; request fees have no cap')],
-    [say('有链接：未缓存的随机文件路径', 'With a link: uncached random file paths'), num(say('≈ $1.1 / h / 区域，约 $15 / h', '≈ $1.1 / h per region, ~$15 / h')), say('Lambda@Edge 每区域并发 10', 'Lambda@Edge concurrency 10 per region')],
+    [say('有链接：未缓存的随机文件路径', 'With a link: uncached random file paths'), num(say('并发 10 时 ≈ $1.1 / h / 区域（约 $15 / h）；1000 时 ≈ $110 / h / 区域', '≈ $1.1 / h per region at 10 concurrent (~$15 / h); ≈ $110 / h per region at 1,000')), say('Lambda@Edge 每区域并发配额（SEC-8）', 'Lambda@Edge per-region concurrency quota (SEC-8)')],
     [say('有链接：反复下载大文件', 'With a link: repeated large downloads'), num('10 Gbps 时 ≈ $380–540 / h'), say('没有（SEC-4）；先用掉每月免费 1 TB', 'None (SEC-4); the free 1 TB a month goes first')],
   ]));
 
@@ -433,7 +434,7 @@ function security(root) {
     say('每个路由都检查授权；输入校验链接主机、ID 格式、过期时间和正文大小；错误只返回通用信息。', 'Every route checks authorisation; input validation covers link host, ID format, expiry and body size; errors return only generic messages.'),
     say('密钥：gitleaks 8.30.1 扫描全部 git 历史，0 处泄漏；代码和日志中没有密钥、账号 ID 或租户 ID。', 'Secrets: gitleaks 8.30.1 over the full git history found 0 leaks; no secrets, account IDs or tenant IDs in code or logs.'),
     say('依赖：见 SEC-10。', 'Dependencies: see SEC-10.'),
-    say('AWS：存储桶禁止公开访问、SSE-S3、只限 HTTPS、OAC；API 日志保留 30 天（边缘日志见 SEC-3）；IAM 见 SEC-7。', 'AWS: bucket blocks public access, SSE-S3, HTTPS only, OAC; API logs kept 30 days (edge logs: SEC-3); IAM: SEC-7.'),
+    say('AWS：存储桶禁止公开访问、SSE-S3、只限 HTTPS、OAC；所有日志保留 90 天（SEC-3）；IAM 见 SEC-7。', 'AWS: bucket blocks public access, SSE-S3, HTTPS only, OAC; all logs kept 90 days (SEC-3); IAM: SEC-7.'),
     say('测试：60 个 Jest 测试，包括 SEC-1 的回归测试（登录 Cookie 不能当会话、会话不能当登录 Cookie、伪造/篡改/无类型/过期令牌被拒）和 SEC-2 的并发上限。', 'Tests: 60 Jest tests, including SEC-1 regressions (sign-in cookie refused as a session, session refused as the sign-in cookie, forged, tampered, untyped and expired tokens refused) and the SEC-2 concurrency cap.'),
   ]));
 
