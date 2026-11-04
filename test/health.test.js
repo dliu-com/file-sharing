@@ -28,15 +28,16 @@ describe('/docs#health (people) and /docs/health.md (machines)', () => {
 
   test('the tab has no exact technical details: no code, folded blocks, URLs, status codes, headers or JSON', () => {
     expect(html).not.toMatch(/<code|<pre|<details|<summary/);
-    expect(html).not.toMatch(/https?:\/\/|\bGET\b|\bHEAD\b|\b(200|301|302|401|403|404|503)\b/);
+    const STATUS = 'https://status.dliu.com/site/share';
+    expect(html.split(STATUS).join('')).not.toMatch(/https?:\/\/|\bGET\b|\bHEAD\b|\b(200|301|302|401|403|404|503)\b/);
     expect(html).not.toMatch(/content-type|cache-control|authorization|application\/|text\/html|"status"|\{ ?"/i);
     expect(html).not.toMatch(/\sstyle="/);
   });
 
-  test('the Markdown file is linked right under the heading and again at the end, and nowhere else', () => {
+  test('right under the heading: this site\'s live status page and the Markdown file; the Markdown file again at the end; no other links', () => {
     const links = [...html.matchAll(/<a [^>]*>/g)].map((m) => m[0]);
-    expect(links).toEqual(['<a href="/docs/health.md">', '<a href="/docs/health.md">']);
-    expect(html.trim()).toMatch(/^<h2 data-lang="en">[^<]+<\/h2><h2 data-lang="zh" hidden>[^<]+<\/h2>\s*<p class="dg-note"><a href="\/docs\/health\.md"><span data-lang="en">Machine-readable version: \/docs\/health\.md<\/span>/);
+    expect(links).toEqual(['<a href="https://status.dliu.com/site/share">', '<a href="/docs/health.md">', '<a href="/docs/health.md">']);
+    expect(html.trim()).toMatch(/^<h2 data-lang="en">[^<]+<\/h2><h2 data-lang="zh" hidden>[^<]+<\/h2>\s*<p class="dg-note"><a href="https:\/\/status\.dliu\.com\/site\/share"><span data-lang="en">Live status: status\.dliu\.com\/site\/share<\/span><span data-lang="zh" hidden>实时状态：[^<]+<\/span><\/a> · <a href="\/docs\/health\.md"><span data-lang="en">Machine-readable version: \/docs\/health\.md<\/span>/);
     expect(html.trim()).toMatch(/<a href="\/docs\/health\.md"><span data-lang="en">Technical version for machines \(Markdown\)<\/span>[\s\S]*<\/p>$/);
   });
 
