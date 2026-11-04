@@ -44,6 +44,12 @@ test('the owner sign-in on the home page is the shared sign-in button', () => {
   expect(read('web/index.html')).toContain('<a class="dl-button dl-signin" href="/admin"');
 });
 
+test('the Architecture tab starts with a link to the source code on GitHub (shared dl-docs-repo style, CN/EN label)', () => {
+  const page = read('web/docs.html');
+  expect(page).toContain('<article id="architecture" class="dl-docs"><p class="dl-docs-repo"><span data-lang="en">Source code:</span><span data-lang="zh" hidden>源代码：</span> <a href="https://github.com/dliu-com/file-sharing">github.com/dliu-com/file-sharing</a></p>');
+  expect(read('web/docs.js')).toMatch(/function architecture\(root\) \{\n  const add = writer\(root\);\n  add\('h2'/);
+});
+
 test('the docs page loads the shared docs stylesheet and tabs, and the app has no docs stylesheet of its own', () => {
   const page = read('web/docs.html');
   expect(page.indexOf(DL_CSS)).toBeLessThan(page.indexOf('<link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl-docs.css">'));
