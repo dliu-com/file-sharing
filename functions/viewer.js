@@ -110,8 +110,9 @@ async function handler(event) {
     request.uri = '/_app/health.md';
     return request;
   }
-  if (uri === '/robots.txt' || uri === '/favicon.ico') {
-    request.uri = uri === '/robots.txt' ? '/_app/robots.txt' : ICON;
+  if (uri === '/robots.txt' || uri === '/sitemap.xml' || uri === '/favicon.ico') {
+    request.uri = uri === '/robots.txt' ? '/_app/robots.txt'
+      : uri === '/sitemap.xml' ? '/_app/sitemap.xml' : ICON;
     return request;
   }
 
