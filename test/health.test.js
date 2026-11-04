@@ -31,17 +31,41 @@ describe('/docs#health (people) and /docs/health.md (machines)', () => {
     expect(html).not.toMatch(/https?:\/\/|\bGET\b|\bHEAD\b|\b(200|301|302|401|403|404|503)\b/);
     expect(html).not.toMatch(/content-type|cache-control|authorization|application\/|text\/html|"status"|\{ ?"/i);
     expect(html).not.toMatch(/\sstyle="/);
+  });
+
+  test('the Markdown file is linked right under the heading and again at the end, and nowhere else', () => {
     const links = [...html.matchAll(/<a [^>]*>/g)].map((m) => m[0]);
-    expect(links).toEqual(['<a href="/docs/health.md">']);
+    expect(links).toEqual(['<a href="/docs/health.md">', '<a href="/docs/health.md">']);
+    expect(html.trim()).toMatch(/^<h2 data-lang="en">[^<]+<\/h2><h2 data-lang="zh" hidden>[^<]+<\/h2>\s*<p class="dg-note"><a href="\/docs\/health\.md"><span data-lang="en">Machine-readable version: \/docs\/health\.md<\/span>/);
     expect(html.trim()).toMatch(/<a href="\/docs\/health\.md"><span data-lang="en">Technical version for machines \(Markdown\)<\/span>[\s\S]*<\/p>$/);
+  });
+
+  test('a Components-style tiers diagram: guest → edge → app → private, joined by labelled arrows', () => {
+    const figure = html.match(/<figure class="dg dg-tiers">([\s\S]*?)<\/figure>/)[1];
+    expect([...figure.matchAll(/<div class="dg-tier dg-([a-z]+)">/g)].map((m) => m[1])).toEqual(['untrusted', 'edge', 'app', 'private']);
+    expect((figure.match(/<div class="dg-tier-label"><span class="dg-badge">/g) || []).length).toBe(4);
+    expect((figure.match(/<div class="dg-link"><span class="dg-arrow" aria-hidden="true"><svg[^>]*>.*?<\/svg><\/span><span data-lang="en">[^<]+<\/span>/g) || []).length).toBe(3);
+    for (const tier of figure.split('<div class="dg-tier ').slice(1)) expect(tier).toMatch(/<div class="dg-tier-nodes"><div class="dg-node"><span class="dg-icon" data-icon=/);
+  });
+
+  test('every icon comes from the diagram kit (same colours and shapes as the Architecture tab), filled in by docs.js', () => {
+    const kit = read('web/diagram.js');
+    const names = [...html.matchAll(/<span class="dg-icon" data-icon="([a-z0-9]+)" aria-hidden="true"><\/span>/g)].map((m) => m[1]);
+    expect(names.length).toBe((html.match(/class="dg-icon/g) || []).length);
+    expect(names.length).toBeGreaterThanOrEqual(10);
+    for (const name of names) expect(kit).toMatch(new RegExp(`\\n  ${name}: \\['#`));
+    for (const name of ['cloudfront', 'key', 'lambda', 'ssm', 'onedrive']) {
+      expect(names).toContain(name);
+      expect(read('web/docs.js')).toContain(`icon: '${name}'`);
+    }
+    expect(read('web/docs.js')).toContain("for (const slot of document.querySelectorAll('#health [data-icon]')) slot.replaceWith(icon(slot.dataset.icon));");
   });
 
   test('a flow shows how a run goes and ends in working, slow or not working', () => {
     expect(html).toContain('<div class="dg-flow">');
     expect((html.match(/<div class="dg-step">/g) || []).length).toBeGreaterThanOrEqual(3);
-    expect(html).toContain('<div class="dg-arrow" aria-hidden="true">');
+    expect(html).toContain('<span class="dg-arrow" aria-hidden="true">');
     for (const result of ['dg-good', 'dg-warn', 'dg-bad']) expect(html).toContain(`<div class="dg-step ${result}">`);
-    for (const [, name] of html.matchAll(/class="dg-icon (dg-c-[a-z]+)"/g)) expect(read('web/style.css')).toContain(`.dg-icon.${name} {`);
   });
 
   test('the big numbers match the Markdown file', () => {

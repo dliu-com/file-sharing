@@ -1,7 +1,7 @@
 import { t, say } from './i18n.js';
-import { flow, tiers, stats, table, callout, more } from './diagram.js';
+import { flow, tiers, stats, table, callout, more, icon } from './diagram.js';
 
-// health (Health) is static HTML in docs.html; the others are drawn below.
+// health (Health) is static HTML in docs.html, with its icons filled in from the diagram kit; the others are drawn below.
 const TABS = ['architecture', 'cost', 'security', 'health'];
 const mono = (text) => ({ text, className: 'mono' });
 const num = (text) => ({ text, className: 'num' });
@@ -462,6 +462,7 @@ function security(root) {
 architecture(document.getElementById('architecture'));
 cost(document.getElementById('cost'));
 security(document.getElementById('security'));
+for (const slot of document.querySelectorAll('#health [data-icon]')) slot.replaceWith(icon(slot.dataset.icon));
 
 function show(scroll) {
   const current = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : TABS[0];

@@ -69,11 +69,6 @@ table.files td.actions .row { justify-content: flex-end; flex-wrap: nowrap; gap:
 }
 
 /* Diagram icon colours on the static health page (the CSP allows no inline style attributes). */
-.dg-icon.dg-c-clock { --dg: #147cab; }
-.dg-icon.dg-c-edge { --dg: #8c4fff; }
-.dg-icon.dg-c-lambda { --dg: #ed7100; }
-.dg-icon.dg-c-store { --dg: #e7157b; }
-.dg-icon.dg-c-lock { --dg: #3f8624; }
 
 /* Testing tab (/docs#health): plain-words table and the checks-per-function bar chart (no inline styles under the CSP). */
 .health-table th[scope="row"] strong { display: block; }
