@@ -46,21 +46,18 @@ describe('viewer function', () => {
     }
     expect((await handler(request('/docs/health.md'))).uri).toBe('/_app/health.md');
     expect((await handler(request('/robots.txt'))).uri).toBe('/_app/robots.txt');
-    expect((await handler(request('/sitemap.xml'))).uri).toBe('/_app/sitemap.xml');
     expect((await handler(request('/favicon.ico'))).uri).toBe('/_app/logo.svg');
   });
 
-  test('robots.txt blocks every path, so the sitemap lists no URLs (the site is private and noindex)', () => {
+  test('robots.txt blocks every path and names no sitemap; there is no sitemap (the site is private and noindex)', () => {
     const fs = require('fs');
-    const web = (f) => fs.readFileSync(require('path').join(__dirname, '..', 'web', f), 'utf8');
-    expect(web('robots.txt')).toMatch(/^User-agent: \*\nDisallow: \/\n/);
-    expect(web('robots.txt')).toContain('Sitemap: https://share.dliu.com/sitemap.xml');
-    expect(web('sitemap.xml')).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-    expect(web('sitemap.xml')).not.toMatch(/<url>|<loc>/);
+    const web = require('path').join(__dirname, '..', 'web');
+    expect(fs.readFileSync(require('path').join(web, 'robots.txt'), 'utf8')).toBe('User-agent: *\nDisallow: /\n');
+    expect(fs.existsSync(require('path').join(web, 'sitemap.xml'))).toBe(false);
   });
 
   test('anything else is the link-not-found page', async () => {
-    for (const uri of ['/index.html', '/_data/x', '/s', '/s/', '/x/Abc1234567/', '/admin.html']) {
+    for (const uri of ['/index.html', '/_data/x', '/s', '/s/', '/x/Abc1234567/', '/admin.html', '/sitemap.xml']) {
       const result = await handler(request(uri));
       expect(result.statusCode).toBe(404);
       expect(header(result, 'content-type')).toMatch(/text\/html/);

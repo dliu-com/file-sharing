@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!-- Intentionally empty: share.dliu.com is private. robots.txt disallows every path and every response is noindex
-     (X-Robots-Tag and <meta name="robots">), so no URL here is indexable. Share links (/s/<id>) are secrets, and the
-     home page, docs, sign-in, owner page, API and health endpoints must stay out of search results. -->
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-</urlset>
