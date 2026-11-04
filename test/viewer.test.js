@@ -50,6 +50,15 @@ describe('viewer function', () => {
     expect((await handler(request('/favicon.ico'))).uri).toBe('/_app/logo.svg');
   });
 
+  test('robots.txt blocks every path, so the sitemap lists no URLs (the site is private and noindex)', () => {
+    const fs = require('fs');
+    const web = (f) => fs.readFileSync(require('path').join(__dirname, '..', 'web', f), 'utf8');
+    expect(web('robots.txt')).toMatch(/^User-agent: \*\nDisallow: \/\n/);
+    expect(web('robots.txt')).toContain('Sitemap: https://share.dliu.com/sitemap.xml');
+    expect(web('sitemap.xml')).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+    expect(web('sitemap.xml')).not.toMatch(/<url>|<loc>/);
+  });
+
   test('anything else is the link-not-found page', async () => {
     for (const uri of ['/index.html', '/_data/x', '/s', '/s/', '/x/Abc1234567/', '/admin.html']) {
       const result = await handler(request(uri));
