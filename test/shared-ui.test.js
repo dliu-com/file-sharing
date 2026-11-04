@@ -51,7 +51,7 @@ test('the docs page loads the shared docs stylesheet and tabs, and the app has n
   expect(page).toContain('<nav class="dl-tabs" aria-label="Docs sections">');
   expect(page).toContain('<article id="architecture" class="dl-docs">');
   for (const tab of ['architecture', 'cost', 'security']) expect(page).toContain(`<a href="#${tab}" data-tab="${tab}"`);
-  expect(page).toContain('<a href="#health" data-tab="health" data-i18n="health">Testing</a>');
+  expect(page).toContain('<a href="#health" data-tab="health" data-i18n="health">Health</a>');
   expect(page).not.toContain('/_app/docs.css');
   expect(fs.existsSync(path.join(__dirname, '..', 'web/docs.css'))).toBe(false);
 });

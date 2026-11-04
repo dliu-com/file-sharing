@@ -53,10 +53,10 @@ flowchart LR
 | --- | --- | --- |
 | `/` | Landing page | S3 `/_app/index.html` |
 | `/admin` | Owner page | S3 `/_app/admin.html`, which calls the API |
-| `/docs` | Public docs (CN/EN): Architecture, Cost, Security and Testing tabs, drawn with the diagram kit shared with the other dliu.com sites (`web/diagram.js`, styled by the shared `dl-docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
-| `/docs#health` | The docs page's **Testing** tab (CN/EN), "how to test this site" for [status.dliu.com](https://status.dliu.com), per the [HEALTH.md contract](https://github.com/dliu-com/status/blob/main/HEALTH.md): for people, with no exact technical details: a flow of a test run, big numbers, a plain-words table per function, a checks-per-function chart and what isn't tested, ending with a link to the Markdown version. It is static HTML in `web/docs.html`. | S3 `/_app/docs.html` |
-| `/docs/health` | Old address of the Testing tab: `301` to `/docs#health` | CloudFront Function |
-| `/docs/health.md` | Every technical detail (URLs, status codes, markers, the `/health` format), as `text/markdown`, for machines; enough on its own to implement the checks. `test/health.test.js` checks that the Testing tab's functions, numbers and chart match it, and that the tab has no code, URLs or folded blocks. | S3 `/_app/health.md` |
+| `/docs` | Public docs (CN/EN): Architecture, Cost, Security and Health tabs, drawn with the diagram kit shared with the other dliu.com sites (`web/diagram.js`, styled by the shared `dl-docs.css`). The penetration-test table lists checks run live; re-run them and keep it and this README in step when the design changes. | S3 `/_app/docs.html` |
+| `/docs#health` | The docs page's **Health** tab (CN/EN), "how to test this site" for [status.dliu.com](https://status.dliu.com), per the [HEALTH.md contract](https://github.com/dliu-com/status/blob/main/HEALTH.md): for people, with no exact technical details: a flow of a test run, big numbers, a plain-words table per function, a checks-per-function chart and what isn't tested, ending with a link to the Markdown version. It is static HTML in `web/docs.html`. | S3 `/_app/docs.html` |
+| `/docs/health` | Old address of the Health tab: `301` to `/docs#health` | CloudFront Function |
+| `/docs/health.md` | Every technical detail (URLs, status codes, markers, the `/health` format), as `text/markdown`, for machines; enough on its own to implement the checks. `test/health.test.js` checks that the Health tab's functions, numbers and chart match it, and that the tab has no code, URLs or folded blocks. | S3 `/_app/health.md` |
 | `/health` | Public health check, `application/health+json`: `{status, time, functions}` with `links` (one KeyValueStore describe) and `signin` (the Entra config from SSM, cached 5 minutes). 200 for pass/warn, 503 for fail, no private details. Its own CloudFront behaviour forwards no cookies, headers or query string and caches for 60 s, so at most one Lambda call a minute per edge. | API Lambda |
 | `/s/<id>/[path]` | Viewer page: the share's root, a subfolder (ending in `/`) or one file's preview | S3 `/_app/view.html`, which calls `/api/s/<id>/info` |
 | `/f/<id>/<path>` | Raw file bytes, shown inline when the type is safe to show | Lambda@Edge and SharePoint, cached by CloudFront |
@@ -197,7 +197,7 @@ Then sign in at `https://share.dliu.com/admin` and create a link.
 
 | Command | What it does |
 | --- | --- |
-| `make test` | Jest tests for the viewer function, SharePoint module, edge function, API, `/health`, the Testing tab and `health.md` (in sync) and stack |
+| `make test` | Jest tests for the viewer function, SharePoint module, edge function, API, `/health`, the Health tab and `health.md` (in sync) and stack |
 | `make probe` | From this computer, checks that SharePoint still answers the way the site expects (see below) |
 | `make smoke` | Against the live site: creates a throwaway link to the test share, waits for it to reach the KeyValueStore, checks the viewer page, a range download, `?dl=1`, 404s and security headers, then deletes the link. `--keep` keeps it. |
 | `make pentest` | Live black-box penetration tests (no credentials): auth bypass, forged and replayed cookies, OIDC, link guessing, XSS, CRLF, CORS, cache poisoning, hidden files, TLS and headers. Prints a Markdown table; exits 1 on any failure. |

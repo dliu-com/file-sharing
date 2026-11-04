@@ -38,7 +38,7 @@ const STRINGS = {
     architecture: 'Architecture',
     cost: 'Cost',
     security: 'Security',
-    health: 'Testing',
+    health: 'Health',
   },
   zh: {
     loading: '加载中…',
@@ -75,7 +75,7 @@ const STRINGS = {
     architecture: '架构',
     cost: '费用',
     security: '安全',
-    health: '测试',
+    health: '健康',
   },
 };
 

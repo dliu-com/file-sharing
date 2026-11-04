@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Guards the dliu.com health contract (dliu-com/status HEALTH.md): the /docs#health Testing tab, /docs/health.md and /health.
+// Guards the dliu.com health contract (dliu-com/status HEALTH.md): the /docs#health Health tab, /docs/health.md and /health.
 const read = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const docs = read('web/docs.html');
 const html = docs.split('<article id="health" class="dl-docs" hidden>')[1].split('</article>')[0];
@@ -20,8 +20,8 @@ const chart = () => Object.fromEntries([...html.matchAll(/<div class="health-row
     .reduce((n, [, kind, count]) => ({ ...n, [kind]: Number(count) }), { visit: 0, self: 0 })]));
 
 describe('/docs#health (people) and /docs/health.md (machines)', () => {
-  test('Testing is a tab on /docs, and the separate health page is gone (viewer.test.js checks the 301)', () => {
-    expect(docs).toContain('<a href="#health" data-tab="health" data-i18n="health">Testing</a>');
+  test('Health is a tab on /docs, and the separate health page is gone (viewer.test.js checks the 301)', () => {
+    expect(docs).toContain('<a href="#health" data-tab="health" data-i18n="health">Health</a>');
     expect(read('web/docs.js')).toContain("const TABS = ['architecture', 'cost', 'security', 'health'];");
     expect(fs.existsSync(path.join(__dirname, '..', 'web/health.html'))).toBe(false);
   });
